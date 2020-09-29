@@ -40,6 +40,7 @@ Sampler
 #include <approxmc/approxmc.h>
 #include "unigen/unigen.h"
 #include "config.h"
+#include "cuttingplane.h"
 
 using std::string;
 using std::vector;
@@ -49,7 +50,7 @@ using std::endl;
 using ApproxMC::SolCount;
 using namespace CMSat;
 using namespace ApproxMC;
-
+using UniGen::CuttingPlane;
 
 struct SavedModel
 {
@@ -111,6 +112,7 @@ public:
     AppMC* appmc;
     SATSolver* solver = NULL;
     string get_version_info() const;
+    void set_cutting_plane(CuttingPlane* cutting_plane);
 
     ///What to call on samples
     UniGen::callback callback_func = NULL;
@@ -196,6 +198,7 @@ private:
     uint32_t orig_num_vars;
     double total_inter_simp_time = 0;
     uint32_t threshold; //precision, it's computed
+    CuttingPlane* cutting_plane = NULL;
 };
 
 

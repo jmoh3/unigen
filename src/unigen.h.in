@@ -35,6 +35,7 @@
 #include <fstream>
 #include <cryptominisat5/cryptominisat.h>
 #include <cryptominisat5/solvertypesmini.h>
+#include "cuttingplane.h"
 
 namespace ApproxMC {
     class AppMC;
@@ -69,6 +70,7 @@ public:
     void set_logfile(std::ostream* logfile);
     void set_verbosity(uint32_t verb);
     void set_callback(UniGen::callback f, void* data);
+    void set_cutting_plane(CuttingPlane* cutting_plane);
 
     //Querying default values
     double get_kappa();

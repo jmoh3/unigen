@@ -32,6 +32,7 @@
 #include "config.h"
 #include <iostream>
 #include <fstream>
+#include "cuttingplane.h"
 using namespace ApproxMC;
 
 using std::cout;
@@ -147,4 +148,9 @@ DLL_PUBLIC void UniG::set_logfile(std::ostream* logfile)
 DLL_PUBLIC void UniG::set_verbosity(uint32_t verb)
 {
     data->conf.verb = verb;
+}
+
+DLL_PUBLIC void UniG::set_cutting_plane(CuttingPlane* cutting_plane)
+{
+    data->sampler.set_cutting_plane(cutting_plane);
 }

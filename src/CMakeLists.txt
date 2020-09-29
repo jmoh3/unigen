@@ -59,7 +59,26 @@ include_directories(${APPROXMC_INCLUDE_DIRS})
 include_directories(${GMP_INCLUDE_DIRS})
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/unigen.h.in" "${CMAKE_CURRENT_BINARY_DIR}/unigen/unigen.h" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cuttingplane.h" "${CMAKE_CURRENT_BINARY_DIR}/unigen/cuttingplane.h" @ONLY)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
+
+set (lumberjack_src
+    Lumberjack/mainlumberjack.cpp
+    Lumberjack/cuttingplanedollo.cpp
+    Lumberjack/samplerdollo.cpp
+    Lumberjack/matrix.cpp
+    Lumberjack/utils.cpp
+    sampler.cpp
+)
+
+set (lumberjack_hdr
+    Lumberjack/cuttingplanedollo.h
+    Lumberjack/samplerdollo.h
+    Lumberjack/matrix.h
+    Lumberjack/utils.h
+    cuttingplane.h
+    sampler.h
+)
 
 set(unigen_lib_files
     sampler.cpp
@@ -79,6 +98,7 @@ set_target_properties(unigen PROPERTIES
 )
 
 unigen_add_public_header(unigen ${CMAKE_CURRENT_BINARY_DIR}/unigen/unigen.h )
+unigen_add_public_header(unigen ${CMAKE_CURRENT_BINARY_DIR}/unigen/cuttingplane.h )
 
 # -----------------------------------------------------------------------------
 # Copy public headers into build directory include directory.
@@ -130,6 +150,12 @@ set_target_properties(unigen-bin PROPERTIES
         OUTPUT_NAME unigen
         RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
         INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+add_executable(
+    lumberjack ${lumberjack_src} ${lumberjack_hdr}
+    unigen.cpp
+)
+target_link_libraries( lumberjack  ${cms_libs} ${unigen_exec_link_libs} ${APPROXMC_LIBRARIES} ${CRYPTOMINISAT5_LIBRARIES})
 
 install(TARGETS unigen-bin
     EXPORT ${unigen_EXPORT_NAME}

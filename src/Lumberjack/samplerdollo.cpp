@@ -51,17 +51,21 @@ int SamplerDollo::solve(const ApproxMC::SolCount *sol_count, uint32_t num_sample
   /// Create variables
   SATSolver* solver = _approxmc->get_solver();
   solver->new_vars(_nrActiveVariables);
+
+  std::vector<uint32_t> sampling_set;
   
-  /// Update sampling set
-  // for (int i = 0; i < _nrActiveVariables; ++i)
-  // {
-  //   _conf.sampling_set.push_back(i);
-  // }
+  // Update sampling set
+  for (int i = 0; i < _nrActiveVariables; ++i)
+  {
+    sampling_set.push_back(i);
+  }
+  _approxmc->set_sampling_set(sampling_set);
 
   _unigen->sample(sol_count, num_samples); // _approxmc->solve(_conf);
   // if (num_solutions > 0) {
   //   processSolution();
   // }
+  processSolution();
 
   return 0;
 }

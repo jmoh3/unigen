@@ -209,7 +209,15 @@ SolNum Sampler::bounded_sol_count(
         lbool ret = solver->solve(&new_assumps, only_indep_sol);
 
         if (cutting_plane != NULL) {
-            cutting_plane->separate();
+            int cuts = 0;
+            int delta = 0;
+            do {
+                
+                ret = solver->solve(&new_assumps);
+                delta = cutting_plane->separate();
+                cuts += delta;
+            } while (delta != 0);
+            std::cout << "[cuts] Added " << cuts << " clauses -- solutions: " << solutions << std::endl;
         }
 
         //COZ_PROGRESS_NAMED("one solution")

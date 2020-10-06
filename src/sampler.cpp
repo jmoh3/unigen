@@ -206,18 +206,20 @@ SolNum Sampler::bounded_sol_count(
     double last_found_time = cpuTimeTotal();
     vector<vector<lbool>> models;
     while (solutions < maxSolutions) {
-        lbool ret = solver->solve(&new_assumps, only_indep_sol);
+        lbool ret;
 
         if (cutting_plane != NULL) {
             int cuts = 0;
             int delta = 0;
             do {
-                
                 ret = solver->solve(&new_assumps);
                 delta = cutting_plane->separate();
                 cuts += delta;
             } while (delta != 0);
             std::cout << "[cuts] Added " << cuts << " clauses -- solutions: " << solutions << std::endl;
+            std::cout << "Solutions: " << out_solutions->size() << std::endl; 
+        } else {
+            ret = solver->solve(&new_assumps, only_indep_sol);
         }
 
         //COZ_PROGRESS_NAMED("one solution")
@@ -245,6 +247,7 @@ SolNum Sampler::bounded_sol_count(
         }
 
         if (ret != l_True) {
+            std::cout << "RET != L_TRUE\n";
             break;
         }
 
@@ -257,6 +260,11 @@ SolNum Sampler::bounded_sol_count(
         models.push_back(model);
         if (out_solutions) {
             out_solutions->push_back(get_solution_ints(model));
+            std::cout << "Adding solution: ";
+            for (auto solution : get_solution_ints(model)) {
+                std::cout << solution << " ";
+            }
+            std::cout << "0\n";
         }
 
         //ban solution
@@ -273,6 +281,7 @@ SolNum Sampler::bounded_sol_count(
     }
 
     if (solutions < maxSolutions) {
+        std::cout << "Solutions < maxSolutions" << std::endl;
         //Sampling -- output a random sample of N solutions
         if (solutions >= minSolutions) {
             assert(minSolutions > 0);

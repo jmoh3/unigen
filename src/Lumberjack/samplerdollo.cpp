@@ -61,6 +61,8 @@ int SamplerDollo::solve(const ApproxMC::SolCount *sol_count, uint32_t num_sample
   }
   _approxmc->set_sampling_set(sampling_set);
 
+  auto sampling = _approxmc->get_sampling_set();
+  
   _unigen->sample(sol_count, num_samples); // _approxmc->solve(_conf);
   // if (num_solutions > 0) {
   //   processSolution();

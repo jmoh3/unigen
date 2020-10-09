@@ -45,9 +45,7 @@ void SamplerDollo::init() {
   }
   _cuttingPlane = new CuttingPlaneDollo(_approxmc->get_solver(), _B, _m, _n, _k, _B2Var, _activeEntries, _solA);
   _unigen->set_cutting_plane(_cuttingPlane);
-}
 
-int SamplerDollo::solve(const ApproxMC::SolCount *sol_count, uint32_t num_samples) {
   /// Create variables
   SATSolver* solver = _approxmc->get_solver();
   solver->new_vars(_nrActiveVariables);
@@ -60,9 +58,9 @@ int SamplerDollo::solve(const ApproxMC::SolCount *sol_count, uint32_t num_sample
     sampling_set.push_back(i);
   }
   _approxmc->set_sampling_set(sampling_set);
+}
 
-  auto sampling = _approxmc->get_sampling_set();
-  
+int SamplerDollo::solve(const ApproxMC::SolCount *sol_count, uint32_t num_samples) {
   _unigen->sample(sol_count, num_samples); // _approxmc->solve(_conf);
   // if (num_solutions > 0) {
   //   processSolution();

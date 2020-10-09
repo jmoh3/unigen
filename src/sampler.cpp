@@ -164,10 +164,10 @@ SolNum Sampler::bounded_sol_count(
     }
 
     //Will we need to extend the solution?
-    bool only_indep_sol = true;
-    if (out_solutions != NULL) {
-        only_indep_sol = conf.only_indep_samples;
-    }
+    bool only_indep_sol = false; // true;
+    // if (out_solutions != NULL) {
+    //     only_indep_sol = false //conf.only_indep_samples;
+    // }
 
     //Turn off improvement from ApproxMC4 research paper
     if (conf.force_sol_extension) {
@@ -212,12 +212,26 @@ SolNum Sampler::bounded_sol_count(
             int cuts = 0;
             int delta = 0;
             do {
-                ret = solver->solve(&new_assumps);
+                std::cout << "new_assumps: " << new_assumps << std::endl;
+                ret = solver->solve(&new_assumps, false);
+
+                // no solutions found
+                if (ret == l_False) {
+                    break;
+                }
+
+                std::cout << "Solution to separate: ";
+                const vector<lbool> model = solver->get_model();
+                for (auto solution : get_solution_ints(model)) {
+                    std::cout << solution << " ";
+                }
+                std::cout << "0\n";
+
                 delta = cutting_plane->separate();
                 cuts += delta;
             } while (delta != 0);
-            std::cout << "[cuts] Added " << cuts << " clauses -- solutions: " << solutions << std::endl;
-            std::cout << "Solutions: " << out_solutions->size() << std::endl; 
+
+            std::cout << "[cuts] Added " << cuts << " clauses" << std::endl;
         } else {
             ret = solver->solve(&new_assumps, only_indep_sol);
         }
@@ -253,6 +267,7 @@ SolNum Sampler::bounded_sol_count(
 
         //Add solution to set
         solutions++;
+        std::cout << "Added solution to set\n";
         const vector<lbool> model = solver->get_model();
         //#ifdef SLOW_DEBUG
         check_model(model, hm, hashCount);
@@ -260,11 +275,6 @@ SolNum Sampler::bounded_sol_count(
         models.push_back(model);
         if (out_solutions) {
             out_solutions->push_back(get_solution_ints(model));
-            std::cout << "Adding solution: ";
-            for (auto solution : get_solution_ints(model)) {
-                std::cout << solution << " ";
-            }
-            std::cout << "0\n";
         }
 
         //ban solution
@@ -277,6 +287,7 @@ SolNum Sampler::bounded_sol_count(
         if (conf.verb_banning_cls) {
             cout << "c [unig] Adding banning clause: " << lits << endl;
         }
+        std::cout << "BANNING CLAUSE: " << lits << "\n";
         solver->add_clause(lits);
     }
 
@@ -427,6 +438,7 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
 
     uint32_t samples = 0;
     if (conf.startiter > 0) {
+        std::cout << "conf.startiter > 0\n"; 
         uint32_t lastSuccessfulHashOffset = 0;
         while(samples < num_samples_needed) {
             samples += gen_n_samples(
@@ -435,6 +447,7 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
                 num_samples_needed);
         }
     } else {
+        std::cout << "ELSE\n"; 
         /* Ideal sampling case; enumerate all solutions */
         vector<vector<int> > out_solutions;
         const uint32_t count = bounded_sol_count(

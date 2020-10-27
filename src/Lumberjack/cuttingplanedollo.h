@@ -9,9 +9,9 @@
 #include <cryptominisat5/cryptominisat.h>
 #include "matrix.h"
 #include "utils.h"
-#include "../cuttingplane.h"
+#include <approxmc/cuttingplane.h>
 
-using UniGen::CuttingPlane;
+using ApproxMC::CuttingPlane;
 
 /// This class provides a cutting plane wrapper for CryptoMiniSAT
 /// This can be used to solve the the k-DP problem .

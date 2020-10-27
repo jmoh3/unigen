@@ -97,6 +97,10 @@ protected:
   StlBoolMatrix _activeEntries;
   /// Number of active variables
   int _nrActiveVariables;
+  /// _falsePositiveVars maps matrix entries to false positive variables
+  StlIntMatrix _falsePositiveVars;
+  /// _falseNegativeVars maps matrix entries to false positive variables
+  StlIntMatrix _falseNegativeVars;
   /// Number of constraints
   int _nrConstraints;
   /// Solution matrix

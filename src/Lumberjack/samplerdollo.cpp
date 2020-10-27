@@ -22,29 +22,72 @@ void SamplerDollo::init() {
   /// Resize containers for each clone
   _activeEntries.resize(_m);
   _B2Var.resize(_m);
+  
   for (int p = 0; p < _m; p++)
   {
     /// Resize container for each mutation
     _activeEntries[p].resize(_n);
     _B2Var[p].resize(_n);
+
     for (int c = 0; c < _n; ++c)
     {
       _activeEntries[p][c] = false;
       
       /// Check if this entry is elligible for being active
-      if (_B.getEntry(p, c)==0){
-        
+      if (_B.getEntry(p, c) == 0){
         /// Note that is it active and generate variables
         _activeEntries[p][c] = true;
         _B2Var[p][c] = _nrActiveVariables;
-        _var2B.push_back(Triple(p, c, 2));
-        _nrActiveVariables = _nrActiveVariables+1;
-        assert(_var2B.size() == (size_t)_nrActiveVariables);
+        _nrActiveVariables++;
       }
     }
   }
+
+  // _falsePositiveVars.resize(_m);
+  // _falseNegativeVars.resize(_m);
+
+  // std::vector<std::vector<Lit>> clauses;
+
+  // for (int p = 0; p < _m; p++)
+  // {
+  //   /// Resize container for each mutation
+  //   _falsePositiveVars[p].resize(_n);
+  //   _falseNegativeVars[p].resize(_n);
+
+  //   for (int c = 0; c < _n; ++c)
+  //   {
+  //     if (_B.getEntry(p, c) == 0){
+  //       // add a false negative variable
+  //       _falseNegativeVars[p][c] = _nrActiveVariables;
+  //       _nrActiveVariables++;
+
+  //       _falsePositiveVars[p][c] = 0;
+
+  //       // prevent "false negative and entry is 2"
+  //       std::vector<Lit> clause;
+  //       clause.push_back(Lit(_B2Var[p][c], false));
+  //       clause.push_back(Lit(_falseNegativeVars[p][c], false));
+
+  //       clauses.push_back(clause);
+  //     } else {
+  //       _falsePositiveVars[p][c] = _nrActiveVariables;
+  //       _nrActiveVariables++;
+
+  //       _falseNegativeVars[p][c] = 0;
+
+  //       // prevent "not false positive and entry is 2"
+  //       std::vector<Lit> clause;
+  //       clause.push_back(Lit(_B2Var[p][c], false));
+  //       clause.push_back(Lit(_falsePositiveVars[p][c], true));
+
+  //       clauses.push_back(clause);
+  //     }
+  //   }
+  // }
+
   _cuttingPlane = new CuttingPlaneDollo(_approxmc->get_solver(), _B, _m, _n, _k, _B2Var, _activeEntries, _solA);
   _unigen->set_cutting_plane(_cuttingPlane);
+  _approxmc->setCuttingPlane(_cuttingPlane);
 
   /// Create variables
   SATSolver* solver = _approxmc->get_solver();
@@ -58,6 +101,8 @@ void SamplerDollo::init() {
     sampling_set.push_back(i);
   }
   _approxmc->set_sampling_set(sampling_set);
+
+  // Add initial clauses
 }
 
 int SamplerDollo::solve(const ApproxMC::SolCount *sol_count, uint32_t num_samples) {

@@ -59,7 +59,6 @@ include_directories(${APPROXMC_INCLUDE_DIRS})
 include_directories(${GMP_INCLUDE_DIRS})
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/unigen.h.in" "${CMAKE_CURRENT_BINARY_DIR}/unigen/unigen.h" @ONLY)
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cuttingplane.h" "${CMAKE_CURRENT_BINARY_DIR}/unigen/cuttingplane.h" @ONLY)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
 set (lumberjack_src
@@ -76,7 +75,6 @@ set (lumberjack_hdr
     Lumberjack/samplerdollo.h
     Lumberjack/matrix.h
     Lumberjack/utils.h
-    cuttingplane.h
     sampler.h
 )
 
@@ -98,7 +96,6 @@ set_target_properties(unigen PROPERTIES
 )
 
 unigen_add_public_header(unigen ${CMAKE_CURRENT_BINARY_DIR}/unigen/unigen.h )
-unigen_add_public_header(unigen ${CMAKE_CURRENT_BINARY_DIR}/unigen/cuttingplane.h )
 
 # -----------------------------------------------------------------------------
 # Copy public headers into build directory include directory.

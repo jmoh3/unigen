@@ -40,7 +40,7 @@ Sampler
 #include <approxmc/approxmc.h>
 #include "unigen/unigen.h"
 #include "config.h"
-#include "cuttingplane.h"
+#include <approxmc/cuttingplane.h>
 
 using std::string;
 using std::vector;
@@ -50,7 +50,7 @@ using std::endl;
 using ApproxMC::SolCount;
 using namespace CMSat;
 using namespace ApproxMC;
-using UniGen::CuttingPlane;
+using ApproxMC::CuttingPlane;
 
 struct SavedModel
 {

@@ -49,7 +49,7 @@
 #include "cryptominisat5/solvertypesmini.h"
 #include "GitSHA1.h"
 #include "sampler.h"
-#include "cuttingplane.h"
+#include <approxmc/cuttingplane.h>
 
 using std::cout;
 using std::cerr;
@@ -57,7 +57,7 @@ using std::endl;
 using std::list;
 using std::map;
 using ApproxMC::SolCount;
-using UniGen::CuttingPlane;
+using ApproxMC::CuttingPlane;
 
 Hash Sampler::add_hash(uint32_t hash_index)
 {

@@ -35,7 +35,9 @@
 #include <fstream>
 #include <cryptominisat5/cryptominisat.h>
 #include <cryptominisat5/solvertypesmini.h>
-#include "cuttingplane.h"
+#include <approxmc/cuttingplane.h>
+
+using ApproxMC::CuttingPlane;
 
 namespace ApproxMC {
     class AppMC;

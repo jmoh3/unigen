@@ -32,7 +32,7 @@
 #include "config.h"
 #include <iostream>
 #include <fstream>
-#include "cuttingplane.h"
+#include <approxmc/cuttingplane.h>
 using namespace ApproxMC;
 
 using std::cout;

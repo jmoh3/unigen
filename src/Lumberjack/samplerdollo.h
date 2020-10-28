@@ -15,13 +15,14 @@
 
 using namespace UniGen;
 using ApproxMC::AppMC;
+using ApproxMC::SolCount;
 
 /// This class provides a cutting plane wrapper for CryptoMiniSAT
 /// This can be used to solve the the k-DP problem .
 class SamplerDollo
 {
 public:
-    
+  
   /// Constructor
   ///
   /// @param B Input matrix
@@ -29,88 +30,52 @@ public:
   SamplerDollo(const Matrix& B, int k, AppMC* appmc, UniG* unigen);
   
   /// Initialize solver
-  virtual void init();
-  
-  /// Return solution matrix
-  const Matrix& getSolA() const
-  {
-    return _solA;
-  }
+  virtual void Init();
   
   /// Solve
-  int solve(const ApproxMC::SolCount *sol_count, uint32_t num_samples);
+  int Sample(const SolCount *sol_count, uint32_t num_samples);
+  
+protected:
+  /// Initializes variable matrices that define entries of corrected matrix
+  void InitializeVariableMatrices();
+
+  /// Get clauses that prevent conflicting values
+  std::vector<std::vector<Lit>> GetConflictingValuesClauses();
+
+  /// Get current assignment from solver and input
+  int GetEntryAssignment(size_t clone, size_t mutation);
+
+  /// Get current assignment from solver and input
+  lbool GetAssignment(size_t var);
   
 protected:
 
-  /// Get current assignment from solver and input
-  int getEntryAssignment(int p, int c);
-
-  /// Get current assignment from solver and input
-  lbool getAssignment(int var);
-
-  /// Extract solution from SAT solver
-  void processSolution();
-  
-  /// Triple (p,c,i)
-  struct Triple
-  {
-  public:
-    Triple(int p, int c, int i)
-      : _p(p)
-      , _c(c)
-      , _i(i)
-    {
-    }
-    
-    Triple()
-      : _p(-1)
-      , _c(-1)
-      , _i(-1)
-    {
-    }
-    
-    int _p;
-    int _c;
-    int _i;
-  };
-      
-  /// Forbidden submatrix
-  typedef std::array<Triple, 6> ViolatedConstraint;
-  
-  /// List of forbidden submatrices
-  typedef std::list<ViolatedConstraint> ViolatedConstraintList;
-  
-protected:
   /// Input matrix
-  const Matrix& _B;
+  const Matrix& B_;
   /// Number of taxa
-  const int _m;
+  const int m_;
   /// Number of characters
-  const int _n;
+  const int n_;
   /// Maximum number of losses
-  const int _k;
-  /// _B2Var[p][c] maps matrix entries to active variable index
-  StlIntMatrix _B2Var;
-  /// _var2B maps active variable index to triple indexing marix B entry
-  std::vector<Triple> _var2B;
-  /// Indicates which matrix entries are active
-  StlBoolMatrix _activeEntries;
-  /// Number of active variables
-  int _nrActiveVariables;
-  /// _falsePositiveVars maps matrix entries to false positive variables
-  StlIntMatrix _falsePositiveVars;
-  /// _falseNegativeVars maps matrix entries to false positive variables
-  StlIntMatrix _falseNegativeVars;
+  const int k_;
+  
+  /// loss_vars_[p][c] maps matrix entries to their loss variables
+  StlIntMatrix loss_vars_;
+  /// false_pos_vars_ maps matrix entries to false positive variables
+  StlIntMatrix false_pos_vars_;
+  /// false_neg_vars_ maps matrix entries to false positive variables
+  StlIntMatrix false_neg_vars_;
+  /// Number of variables
+  int num_vars_;
   /// Number of constraints
-  int _nrConstraints;
-  /// Solution matrix
-  Matrix _solA;
+  int num_constraints_;
+  
   /// Approx MC solver
-  AppMC* _approxmc;
+  AppMC* approxmc_;
   /// UniGen
-  UniG* _unigen;
+  UniG* unigen_;
   /// Cutting plane oracle
-  CuttingPlaneDollo* _cuttingPlane;
+  CuttingPlaneDollo* cutting_plane_;
 };
 
 #endif // COLUMNGEN_H

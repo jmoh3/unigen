@@ -17,40 +17,14 @@ using ApproxMC::CuttingPlane;
 /// This can be used to solve the the k-DP problem .
 class CuttingPlaneDollo: public CuttingPlane
 {
-protected:
-  /// Triple (p,c,i)
-  struct Triple
-  {
-  public:
-    Triple(int p, int c, int i)
-      : _p(p)
-      , _c(c)
-      , _i(i)
-    {
-    }
-    
-    Triple()
-      : _p(-1)
-      , _c(-1)
-      , _i(-1)
-    {
-    }
-    
-    int _p;
-    int _c;
-    int _i;
-  };
-
 public:
-    
+
   /// Constructor
-  CuttingPlaneDollo(SATSolver* solver, const Matrix& B, const int m, const int n, const int k, StlIntMatrix& B2Var, StlBoolMatrix& activeEntries, Matrix& solA);
-  
-  /// Return solution matrix
-  const Matrix& getSolA() const
-  {
-    return _solA;
-  }
+  CuttingPlaneDollo(SATSolver* solver,
+                    const Matrix& B,
+                    StlIntMatrix& loss_vars,
+                    StlIntMatrix& false_neg_vars,
+                    StlIntMatrix& false_pos_vars);
   
 protected:
   
@@ -60,30 +34,22 @@ protected:
   /// Identify violated constraints
   int separate();
   
-  /// Extract solution from SAT solver
-  void processSolution();
-      
-  /// Forbidden submatrix
-  typedef std::array<Triple, 6> ViolatedConstraint;
-  
-  /// List of forbidden submatrices
-  typedef std::list<ViolatedConstraint> ViolatedConstraintList;
-  
 protected:
+
   /// Input matrix
-  const Matrix& _B;
+  const Matrix& B_;
   /// Number of taxa
-  const int _m;
+  const int m_;
   /// Number of characters
-  const int _n;
-  /// Maximum number of losses
-  const int _k;
-  /// _B2Var[p][c] maps matrix entries to active variable index
-  StlIntMatrix& _B2Var;
-  /// Indicates which matrix entries are active
-  StlBoolMatrix& _activeEntries;
-  /// Solution matrix
-  Matrix& _solA;
+  const int n_;
+
+  /// loss_vars maps matrix entries to loss variables
+  StlIntMatrix& loss_vars_;
+  /// false_neg_vars maps matrix entries to false neg variables
+  StlIntMatrix& false_neg_vars_;
+  /// false_pos_vars maps matrix entries to false pos variables
+  StlIntMatrix& false_pos_vars_;
+  
 };
 
 #endif // COLUMNGEN_H

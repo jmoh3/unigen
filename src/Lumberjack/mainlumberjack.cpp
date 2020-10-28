@@ -424,24 +424,24 @@ int main(int argc, char** argv)
     sampler.init();
 
     std::cout << "After reading input matrix:\n";
-    appmc->get_solver()->dump_irred_clauses(&std::cout);
+    // appmc->get_solver()->dump_irred_clauses(&std::cout);
 
     auto sol_count = appmc->count();
 
     std::cout << "Before set_verbosity:\n";
-    appmc->get_solver()->dump_irred_clauses(&std::cout);
+    // appmc->get_solver()->dump_irred_clauses(&std::cout);
     unigen->set_verbosity(verbosity);
     std::cout << "After set_verbosity, Before set_verb_banning_cls:\n";
-    appmc->get_solver()->dump_irred_clauses(&std::cout);
+    // appmc->get_solver()->dump_irred_clauses(&std::cout);
     unigen->set_verb_banning_cls(verb_banning_cls);
     std::cout << "After set_verb_banning_cls:\n";
-    appmc->get_solver()->dump_irred_clauses(&std::cout);
+    // appmc->get_solver()->dump_irred_clauses(&std::cout);
     unigen->set_kappa(kappa);
     unigen->set_multisample(multisample);
     unigen->set_only_indep_samples(only_indep_samples);
     unigen->set_force_sol_extension(force_sol_extension);
     std::cout << "After other stuff:\n";
-    appmc->get_solver()->dump_irred_clauses(&std::cout);
+    // appmc->get_solver()->dump_irred_clauses(&std::cout);
 
     std::ofstream logfile;
     if (logfilename != "") {

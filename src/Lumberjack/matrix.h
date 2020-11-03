@@ -73,7 +73,6 @@ public:
       _k = i - 1;
     }
   }
-  
 
 protected:
   

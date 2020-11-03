@@ -421,7 +421,7 @@ int main(int argc, char** argv)
     }
 
     SamplerDollo sampler(D, 2, appmc, unigen);
-    sampler.init();
+    sampler.Init();
 
     std::cout << "After reading input matrix:\n";
     // appmc->get_solver()->dump_irred_clauses(&std::cout);
@@ -468,7 +468,7 @@ int main(int argc, char** argv)
 
     unigen->set_callback(mycallback, myfile);
     // END HERE
-    sampler.solve(&sol_count, num_samples);
+    sampler.Sample(&sol_count, num_samples);
 
     delete unigen;
     delete appmc;

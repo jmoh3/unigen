@@ -45,7 +45,6 @@ Matrix* Matrix::parse(const std::string& filename)
   return pMatrix;
 }
 
-
 std::ostream& operator<<(std::ostream& out, const Matrix& D)
 {
   out << D._m << " #taxa" << std::endl;

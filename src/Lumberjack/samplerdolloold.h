@@ -10,7 +10,7 @@
 #include "matrix.h"
 #include "utils.h"
 #include <approxmc/approxmc.h>
-#include "cuttingplanedollo.h"
+#include "cuttingplanedolloold.h"
 #include "unigen/unigen.h"
 
 using namespace UniGen;
@@ -110,7 +110,7 @@ protected:
   /// UniGen
   UniG* _unigen;
   /// Cutting plane oracle
-  CuttingPlaneDollo* _cuttingPlane;
+  CuttingPlaneDolloOld* _cuttingPlane;
 };
 
 #endif // COLUMNGEN_H

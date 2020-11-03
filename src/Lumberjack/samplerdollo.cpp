@@ -3,12 +3,12 @@
 
 using std::vector;
 
-SamplerDollo::SamplerDollo(const Matrix& B, int k, AppMC* appmc, UniG* unigen)
+SamplerDollo::SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen)
   : B_(B)
   , m_(B.getNrClones())
   , n_(B.getNrMutations())
   , k_(k)
-  , num_vars_(1)
+  , num_vars_(0)
   , loss_vars_()
   , false_pos_vars_()
   , false_neg_vars_()
@@ -20,14 +20,22 @@ SamplerDollo::SamplerDollo(const Matrix& B, int k, AppMC* appmc, UniG* unigen)
 
 void SamplerDollo::Init() {
   InitializeVariableMatrices();
+  PrintVariableMatrices();
+  cutting_plane_ = new CuttingPlaneDollo(approxmc_->get_solver(), B_, loss_vars_, false_neg_vars_, false_pos_vars_);
 
   // Update sampling set
+  SATSolver* solver = approxmc_->get_solver();
+  solver->new_vars(num_vars_);
+
   vector<uint32_t> sampling_set;
   for (int i = 0; i < num_vars_; ++i)
   {
     sampling_set.push_back(i);
   }
   approxmc_->set_sampling_set(sampling_set);
+
+  std::cout << "Adding conflicting clauses\n";
+  AddConflictingValuesClauses();
 }
 
 void SamplerDollo::InitializeVariableMatrices() {
@@ -55,9 +63,7 @@ void SamplerDollo::InitializeVariableMatrices() {
   }
 }
 
-vector<vector<Lit>> SamplerDollo::GetConflictingValuesClauses() {
-  vector<vector<Lit>> clauses;
-
+void SamplerDollo::AddConflictingValuesClauses() {
   for (size_t i = 0; i < m_; i++) {
     for (size_t j = 0; j < n_; j++) {
       vector<Lit> clause;
@@ -69,15 +75,18 @@ vector<vector<Lit>> SamplerDollo::GetConflictingValuesClauses() {
         clause.push_back(Lit(loss_vars_[i][j], false));
         clause.push_back(Lit(false_pos_vars_[i][j], true));
       }
+
+      std::cout << "Adding clause " << clause << std::endl;
+
+      approxmc_->add_clause(clause);
+
+      std::cout << "Added clause " << clause << std::endl;
     }
   }
-
-  return clauses;
 }
 
-int SamplerDollo::Sample(const ApproxMC::SolCount *sol_count, uint32_t num_samples) {
+void SamplerDollo::Sample(const ApproxMC::SolCount *sol_count, uint32_t num_samples) {
   unigen_->sample(sol_count, num_samples);
-  return 0;
 }
 
 lbool SamplerDollo::GetAssignment(size_t var) {
@@ -85,6 +94,39 @@ lbool SamplerDollo::GetAssignment(size_t var) {
   return solver->get_model()[var];
 }
 
-int SamplerDollo::GetEntryAssignment(size_t clone, size_t mutation){
+int SamplerDollo::GetEntryAssignment(size_t clone, size_t mutation) {
   return 0;
+}
+
+void SamplerDollo::PrintVariableMatrices() {
+
+  std::cout << "Loss variables\n";
+
+  for (size_t i = 0; i < m_; i++) {
+    for (size_t j = 0; j < n_; j++) {
+      std::cout << loss_vars_[i][j] << " ";
+    }
+
+    std::cout << "\n";
+  }
+
+  std::cout << "False negative variables\n";
+
+  for (size_t i = 0; i < m_; i++) {
+    for (size_t j = 0; j < n_; j++) {
+      std::cout << false_neg_vars_[i][j] << " ";
+    }
+
+    std::cout << "\n";
+  }
+
+  std::cout << "False positive variables\n";
+
+  for (size_t i = 0; i < m_; i++) {
+    for (size_t j = 0; j < n_; j++) {
+      std::cout << false_pos_vars_[i][j] << " ";
+    }
+
+    std::cout << "\n";
+  }
 }

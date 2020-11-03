@@ -22,42 +22,65 @@ using ApproxMC::SolCount;
 class SamplerDollo
 {
 public:
+
+  /*
+    Constructor
+    @param B Input matrix
+    @param k Maximum number of losses per character
+  */
+  SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen);
   
-  /// Constructor
-  ///
-  /// @param B Input matrix
-  /// @param k Maximum number of losses per character
-  SamplerDollo(const Matrix& B, int k, AppMC* appmc, UniG* unigen);
-  
-  /// Initialize solver
+  /*
+    Initializes solver
+  */
   virtual void Init();
   
-  /// Solve
-  int Sample(const SolCount *sol_count, uint32_t num_samples);
+  /*
+    Samples solutions from current 1-Dollo instance
+    @param sol_count
+    @param num_samples desired number of samples
+  */
+  void Sample(const SolCount *sol_count, uint32_t num_samples);
   
 protected:
-  /// Initializes variable matrices that define entries of corrected matrix
+  /*
+    Initializes variable matrices that define entries of corrected matrix
+  */
   void InitializeVariableMatrices();
 
-  /// Get clauses that prevent conflicting values
-  std::vector<std::vector<Lit>> GetConflictingValuesClauses();
+  /*
+    Get clauses that prevent conflicting values
+    @return vector of clauses that prevent conflicting values
+  */
+  void AddConflictingValuesClauses();
 
-  /// Get current assignment from solver and input
+  /*
+    Get current assignment for a mutation in a clone from solver and input
+    @param clone index of clone to get assignment for
+    @param mutation index of mutation to get assignment for
+    @return 0 (mutation not present), 1 (mutation present), or 2 (mutation lost)
+  */
   int GetEntryAssignment(size_t clone, size_t mutation);
 
-  /// Get current assignment from solver and input
+  /*
+    Get current assignment of a variable from solver and input
+    @param var label for variable to get assignment for
+    @return true or false
+  */
   lbool GetAssignment(size_t var);
   
+  void PrintVariableMatrices();
+
 protected:
 
   /// Input matrix
   const Matrix& B_;
   /// Number of taxa
-  const int m_;
+  const size_t m_;
   /// Number of characters
-  const int n_;
+  const size_t n_;
   /// Maximum number of losses
-  const int k_;
+  const size_t k_;
   
   /// loss_vars_[p][c] maps matrix entries to their loss variables
   StlIntMatrix loss_vars_;

@@ -1,5 +1,5 @@
 #include "samplerdolloold.h"
-#include "cuttingplanedollo.h"
+#include "cuttingplanedolloold.h"
 
 SamplerDolloOld::SamplerDolloOld(const Matrix& B, int k, AppMC* appmc, UniG* unigen)
   : _B(B)
@@ -85,7 +85,7 @@ void SamplerDolloOld::init() {
   //   }
   // }
 
-  _cuttingPlane = new CuttingPlaneDollo(_approxmc->get_solver(), _B, _m, _n, _k, _B2Var, _activeEntries, _solA);
+  _cuttingPlane = new CuttingPlaneDolloOld(_approxmc->get_solver(), _B, _m, _n, _k, _B2Var, _activeEntries, _solA);
   _unigen->set_cutting_plane(_cuttingPlane);
   _approxmc->setCuttingPlane(_cuttingPlane);
 

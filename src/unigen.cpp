@@ -74,7 +74,7 @@ DLL_PUBLIC void UniG::set_callback(
     data->sampler.callback_func_data = _callback_func_data;
 }
 
-DLL_PUBLIC void UniG::sample(
+DLL_PUBLIC vector<vector<int>> UniG::sample(
     const SolCount* sol_count,
     uint32_t num_samples)
 {
@@ -82,7 +82,7 @@ DLL_PUBLIC void UniG::sample(
         std::cout << "ERROR! You must set the callback function or your samples will be lost" << endl;
         exit(-1);
     }
-    data->sampler.sample(data->conf, *sol_count, num_samples);
+    return data->sampler.sample(data->conf, *sol_count, num_samples);
 }
 
 DLL_PUBLIC string UniG::get_version_info()

@@ -105,7 +105,7 @@ struct SparseData {
 
 class Sampler {
 public:
-    void sample(
+    vector<vector<int>> sample(
         const Config conf,
         const SolCount sol_count,
         const uint32_t num_samples);
@@ -133,10 +133,11 @@ private:
         const uint32_t samples
         , uint32_t* lastSuccessfulHashOffset
         , const uint32_t num_samples_needed
+        , vector<vector<int>>* out_solutions = NULL
     );
     Hash add_hash(uint32_t total_num_hashes);
     string binary(const uint32_t x, const uint32_t length);
-    void generate_samples(const uint32_t num_samples);
+    vector<vector<int>> generate_samples(const uint32_t num_samples);
     SolNum bounded_sol_count(
         uint32_t maxSolutions,
         const vector<Lit>* assumps,

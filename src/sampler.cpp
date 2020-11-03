@@ -43,6 +43,7 @@
 #include <array>
 #include <cmath>
 #include <complex>
+#include <vector>
 
 #include "time_mem.h"
 #include "cryptominisat5/cryptominisat.h"
@@ -56,6 +57,7 @@ using std::cerr;
 using std::endl;
 using std::list;
 using std::map;
+using std::vector;
 using ApproxMC::SolCount;
 using ApproxMC::CuttingPlane;
 
@@ -267,7 +269,6 @@ SolNum Sampler::bounded_sol_count(
 
         //Add solution to set
         solutions++;
-        std::cout << "Added solution to set\n";
         const vector<lbool> model = solver->get_model();
         //#ifdef SLOW_DEBUG
         check_model(model, hm, hashCount);
@@ -287,7 +288,6 @@ SolNum Sampler::bounded_sol_count(
         if (conf.verb_banning_cls) {
             cout << "c [unig] Adding banning clause: " << lits << endl;
         }
-        std::cout << "BANNING CLAUSE: " << lits << "\n";
         solver->add_clause(lits);
     }
 
@@ -324,7 +324,7 @@ SolNum Sampler::bounded_sol_count(
     return SolNum(solutions, repeat);
 }
 
-void Sampler::sample(
+vector<vector<int>> Sampler::sample(
     Config _conf,
     const ApproxMC::SolCount solCount,
     const uint32_t num_samples)
@@ -361,7 +361,7 @@ void Sampler::sample(
         conf.startiter = 0;   /* Indicate ideal sampling case */
     }
 
-    generate_samples(num_samples);
+    return generate_samples(num_samples);
 }
 
 vector<Lit> Sampler::set_num_hashes(
@@ -408,8 +408,10 @@ void Sampler::simplify()
 }
 
 
-void Sampler::generate_samples(const uint32_t num_samples_needed)
+vector<vector<int>> Sampler::generate_samples(const uint32_t num_samples_needed)
 {
+    vector<vector<int> > out_solutions;
+    
     double genStartTime = cpuTimeTotal();
 
     hiThresh = ceil(1 + (1.4142136 * (1 + conf.kappa) * threshold_Samplergen));
@@ -444,12 +446,12 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
             samples += gen_n_samples(
                 callsPerLoop,
                 &lastSuccessfulHashOffset,
-                num_samples_needed);
+                num_samples_needed,
+                &out_solutions);
         }
     } else {
         std::cout << "ELSE\n"; 
         /* Ideal sampling case; enumerate all solutions */
-        vector<vector<int> > out_solutions;
         const uint32_t count = bounded_sol_count(
             std::numeric_limits<uint32_t>::max() //max no. solutions
             , NULL //assumps is empty
@@ -480,12 +482,17 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
     << endl;
 
     cout << "c [unig] Samples generated: " << samples << endl;
+
+    cout << "Actually " << out_solutions.size() << endl;
+
+    return out_solutions;
 }
 
 uint32_t Sampler::gen_n_samples(
     const uint32_t num_calls
     , uint32_t* lastSuccessfulHashOffset
-    , const uint32_t num_samples_needed)
+    , const uint32_t num_samples_needed
+    , vector<vector<int>>* out_solutions)
 {
     SparseData sparse_data(-1);
     uint32_t num_samples = 0;
@@ -517,6 +524,8 @@ uint32_t Sampler::gen_n_samples(
                 , &assumps //assumptions to use
                 , currentHashCount
                 , loThresh //min number of solutions (samples not output otherwise)
+                , NULL
+                , out_solutions
             ).solutions;
             ok = (solutionCount < hiThresh && solutionCount >= loThresh);
             write_log(

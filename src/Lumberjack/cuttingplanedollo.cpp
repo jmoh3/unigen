@@ -30,23 +30,23 @@ CuttingPlaneDollo::CuttingPlaneDollo(SATSolver* solver,
 int CuttingPlaneDollo::getEntryAssignment(int p, int c) {
   int loss_var = loss_vars_[p][c];
 
+  int original_val = B_.getEntry(p, c);
+  int false_neg_var = false_neg_vars_[p][c];
+  int false_pos_var = false_pos_vars_[p][c];
+
   if (getAssignment(loss_var) == l_True) {
+    assert(original_val != 0 || getAssignment(false_neg_var) == l_False);
+    assert(original_val != 1 || getAssignment(false_pos_var) == l_True);
     return 2;
   }
   
-  int original_val = B_.getEntry(p, c);
-
   if (original_val == 0) {
-    int false_neg_var = false_neg_vars_[p][c];
-
     if (getAssignment(false_neg_var) == l_True) {
       return 1;
     } else {
       return 0;
     }
   } else {
-    int false_pos_var = false_pos_vars_[p][c];
-
     if (getAssignment(false_pos_var) == l_True) {
       return 0;
     } else {
@@ -75,25 +75,33 @@ string CuttingPlaneDollo::getSubmatrixAsString(vector<pair<size_t, size_t>> posi
 
 vector<Lit> CuttingPlaneDollo::getLits(int p, int c) {
   int loss_var = loss_vars_[p][c];
-  int false_neg_var = false_neg_vars_[p][c];
-  int false_pos_var = false_pos_vars_[p][c];
+  Lit loss_lit(loss_var, getAssignment(loss_var) != l_True);
 
-  Lit loss_lit(loss_var, getAssignment(loss_var) == l_True);
-  Lit false_neg_lit(false_neg_var, getAssignment(false_neg_var) == l_True);
-  Lit false_pos_lit(false_pos_var, getAssignment(false_pos_var) == l_True);
+  vector<Lit> lits { loss_lit };
 
-  vector<Lit> lits { loss_lit, false_neg_lit, false_pos_lit };
+  if (B_.getEntry(p, c) == 0) {
+    int false_neg_var = false_neg_vars_[p][c];
+    Lit false_neg_lit(false_neg_var, getAssignment(false_neg_var) != l_True);
+
+    lits.push_back(false_neg_lit);
+  } else {
+    int false_pos_var = false_pos_vars_[p][c];
+    Lit false_pos_lit(false_pos_var, getAssignment(false_pos_var) != l_True);
+
+    lits.push_back(false_pos_lit);
+  }
 
   return lits;
 }
 
 int CuttingPlaneDollo::separate() {
+  int num_cuts = 0;
   for (size_t row1 = 0; row1 < m_; row1++) {
     for (size_t row2 = 0; row2 < m_; row2++) {
       if (row1 == row2) {
         continue;
       }
-      for (size_t row3 = 0; row3 < n_; row3++) {
+      for (size_t row3 = 0; row3 < m_; row3++) {
         if (row3 == row2 || row3 == row1) {
           continue;
         }
@@ -114,12 +122,15 @@ int CuttingPlaneDollo::separate() {
 
             vector<pair<size_t, size_t>> positions {b_11_pos, b_12_pos, b_21_pos, b_22_pos, b_31_pos, b_32_pos};
             string submatrix_str = getSubmatrixAsString(positions);
+            if (submatrix_str == "100111") {
+              std::cout << "HERE " << "\n";
+            }
 
             if (forbidden_submatrices_.find(submatrix_str) != forbidden_submatrices_.end()) {
               // submatrix is forbidden
-
-              // get literals corresponding to each entry
+              std::cout << "Submatrix found: " << *forbidden_submatrices_.find(submatrix_str) << std::endl;
               vector<Lit> clause;
+              // get literals corresponding to each entry
               for (auto position : positions) {
                 vector<Lit> entry_lits = getLits(position.first, position.second);
                 for (size_t i = 0; i < entry_lits.size(); i++) {
@@ -128,8 +139,9 @@ int CuttingPlaneDollo::separate() {
                   clause.push_back(entry_lits[i]);
                 }
               }
-              
+              // std::cout << "Adding clause " << clause << std::endl;
               addClause(clause);
+              num_cuts++;
             }
           }
         }
@@ -137,5 +149,5 @@ int CuttingPlaneDollo::separate() {
     }
   }
 
-  return 0;
+  return num_cuts;
 }

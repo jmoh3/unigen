@@ -24,6 +24,8 @@ void SamplerDollo::Init() {
   InitializeVariableMatrices();
   PrintVariableMatrices();
   cutting_plane_ = new CuttingPlaneDollo(approxmc_->get_solver(), B_, loss_vars_, false_neg_vars_, false_pos_vars_);
+  unigen_->set_cutting_plane(cutting_plane_);
+  approxmc_->setCuttingPlane(cutting_plane_);
 
   // Update sampling set
   SATSolver* solver = approxmc_->get_solver();
@@ -52,16 +54,15 @@ void SamplerDollo::InitializeVariableMatrices() {
     false_neg_vars_[i].resize(n_);
 
     for (size_t j = 0; j < n_; j++) {
-      num_vars_++;
       loss_vars_[i][j] = num_vars_;
+      num_vars_++;
       
       if (B_.getEntry(i, j) == 1) {
-        num_vars_++;
         false_pos_vars_[i][j] = num_vars_;
       } else {
-        num_vars_++;
         false_neg_vars_[i][j] = num_vars_;
       }
+      num_vars_++;
     }
   }
 }
@@ -72,19 +73,11 @@ void SamplerDollo::AddConflictingValuesClauses() {
       vector<Lit> clause;
 
       if (B_.getEntry(i, j) == 0) {
-        clause.push_back(Lit(loss_vars_[i][j], false));
-        std::cout << "Var " << loss_vars_[i][j] << " false\n";
-        std::cout << "clause1 " << clause << std::endl;
-        clause.push_back(Lit(false_neg_vars_[i][j], false));
-        std::cout << "Var " << false_neg_vars_[i][j] << " false\n";
-        std::cout << "clause2 " << clause << std::endl;
+        clause.push_back(Lit(loss_vars_[i][j], true));
+        clause.push_back(Lit(false_neg_vars_[i][j], true));
       } else {
-        clause.push_back(Lit(loss_vars_[i][j], false));
-        std::cout << "Var " << loss_vars_[i][j] << " false\n";
-        std::cout << "clause1 " << clause << std::endl;
-        clause.push_back(Lit(false_pos_vars_[i][j], true));
-        std::cout << "Var " << false_pos_vars_[i][j] << " true\n";
-        std::cout << "clause2 " << clause << std::endl;
+        clause.push_back(Lit(loss_vars_[i][j], true));
+        clause.push_back(Lit(false_pos_vars_[i][j], false));
       }
 
       approxmc_->add_clause(clause);
@@ -98,7 +91,7 @@ void SamplerDollo::Sample(const ApproxMC::SolCount *sol_count, uint32_t num_samp
   std::cout << solutions.size() << " solutions sampled\n";
 
   for (auto solution : solutions) {
-    std::cout << "Solution:\n";
+    std::cout << "===================\n";
     map<int, bool> sol_map = GetSolutionMap(solution);
     for (size_t i = 0; i < m_; i++) {
       for (size_t j = 0; j < n_; j++) {
@@ -121,7 +114,7 @@ void SamplerDollo::PrintVariableMatrices() {
 
   for (size_t i = 0; i < m_; i++) {
     for (size_t j = 0; j < n_; j++) {
-      std::cout << loss_vars_[i][j] << " ";
+      std::cout << loss_vars_[i][j]+1 << " ";
     }
 
     std::cout << "\n";
@@ -131,7 +124,11 @@ void SamplerDollo::PrintVariableMatrices() {
 
   for (size_t i = 0; i < m_; i++) {
     for (size_t j = 0; j < n_; j++) {
-      std::cout << false_neg_vars_[i][j] << " ";
+      if (B_.getEntry(i, j) == 0) {
+        std::cout << false_neg_vars_[i][j]+1 << " "; 
+      } else {
+        std::cout << "0 "; 
+      }
     }
 
     std::cout << "\n";
@@ -141,7 +138,11 @@ void SamplerDollo::PrintVariableMatrices() {
 
   for (size_t i = 0; i < m_; i++) {
     for (size_t j = 0; j < n_; j++) {
-      std::cout << false_pos_vars_[i][j] << " ";
+      if (B_.getEntry(i, j) == 1) {
+        std::cout << false_pos_vars_[i][j]+1 << " ";
+      } else {
+        std::cout << "0 "; 
+      }
     }
 
     std::cout << "\n";
@@ -151,7 +152,7 @@ void SamplerDollo::PrintVariableMatrices() {
 map<int, bool> SamplerDollo::GetSolutionMap(const vector<int>& solution) {
   map<int, bool> sol_map;
   for (auto num : solution) {
-    sol_map[abs(num)] = num > 0;
+    sol_map[abs(num) - 1] = num > 0;
   }
   return sol_map;
 }
@@ -164,11 +165,7 @@ int SamplerDollo::GetAssignmentFromSolution(map<int, bool>& solution, size_t clo
   int entry = B_.getEntry(clone, mutation);
 
   if (solution[loss_var]) {
-    if( (entry == 0 && !solution[false_neg_var]) || (entry == 1 && solution[false_pos_var]) ) {
-      std::cout << "Something went wrong ";
-      std::cout << (entry == 0 && !solution[false_neg_var]) << " ";
-      std::cout << (entry == 1 && solution[false_pos_var]) << std::endl;
-    }
+    assert((entry == 0 && !solution[false_neg_var]) || (entry == 1 && solution[false_pos_var]));
     return 2;
   }
 

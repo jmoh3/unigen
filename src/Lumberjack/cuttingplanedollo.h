@@ -36,15 +36,31 @@ public:
 protected:
   
   /// Get current assignment from solver and input
+  /// @param p row (or clone)
+  /// @param c column (or mutation)
+  /// @return 0, 1, or 2
   int getEntryAssignment(int p, int c);
 
   /// Get literals for loss, false negative, and false positive variables corresponding to entry p, c
+  /// @param p row (or clone)
+  /// @param c column (or mutation)
+  /// @return vector of literals that correspond to that entry's assignment
   vector<Lit> getLits(int p, int c);
   
-  /// Identify violated constraints
+  /// Identify violated constraint
+  /// @return number of added constraints
   int separate();
 
+  /// Gets a submatrix whose positions are specified by positions as a string
+  /// @param positions a vector of pairs of indices describing which entries compose the submatrix
+  /// each pair in the vector represents a row, column position
+  /// @return a string representing the submatrix in row major order - for example, "100111" is
+  /// 1 0
+  /// 0 1
+  /// 1 1
   string getSubmatrixAsString(vector<pair<size_t, size_t>> positions);
+
+  vector<int> getSolutionInts(const vector<lbool>& model);
   
 protected:
 
@@ -62,6 +78,20 @@ protected:
                                             "200211", "200212", "200121", "200122", "200221",
                                             "200222", "110212", "110222", "210212", "210222",
                                             "201121", "201122", "201221", "201222", "211222"};
+
+                                            // '1 0 0 1 1 1', '1 0 0 1 1 2',
+                                            // '1 0 0 2 1 1', '1 0 0 2 1 2',
+                                            // '1 0 0 1 2 1', '1 0 0 1 2 2',
+                                            // '1 0 0 2 2 1', '1 0 0 2 2 2',
+                                            // '2 0 0 1 1 1', '2 0 0 1 1 2',
+                                            // '2 0 0 2 1 1', '2 0 0 2 1 2',
+                                            // '2 0 0 1 2 1', '2 0 0 1 2 2',
+                                            // '2 0 0 2 2 1', '2 0 0 2 2 2',
+                                            // '1 1 0 2 1 2', '1 1 0 2 2 2',
+                                            // '2 1 0 2 1 2', '2 1 0 2 2 2',
+                                            // '2 0 1 1 2 1', '2 0 1 1 2 2',
+                                            // '2 0 1 2 2 1', '2 0 1 2 2 2',
+                                            // '2 1 1 2 2 2'
 
   /// loss_vars maps matrix entries to loss variables
   StlIntMatrix& loss_vars_;

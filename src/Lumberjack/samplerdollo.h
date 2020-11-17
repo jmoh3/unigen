@@ -24,62 +24,50 @@ using std::map;
 class SamplerDollo
 {
 public:
-
-  /*
-    Constructor
-    @param B Input matrix
-    @param k Maximum number of losses per character
-  */
+  
+  /// Constructor
+  /// @param B Input matrix
+  /// @param k Maximum number of losses per character
   SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen);
   
-  /*
-    Initializes solver
-  */
+  /// Initializes solver
   virtual void Init();
   
-  /*
-    Samples solutions from current 1-Dollo instance
-    @param sol_count
-    @param num_samples desired number of samples
-  */
+  
+  /// Samples solutions from current 1-Dollo instance
+  /// @param sol_count
+  /// @param num_samples desired number of samples
   void Sample(const SolCount *sol_count, uint32_t num_samples);
   
 protected:
-  /*
-    Initializes variable matrices that define entries of corrected matrix
-  */
+
+  /// Initializes variable matrices that define entries of corrected matrix
   void InitializeVariableMatrices();
 
-  /*
-    Get clauses that prevent conflicting values
-    @return vector of clauses that prevent conflicting values
-  */
+
+  /// Get clauses that prevent conflicting values
+  /// @return vector of clauses that prevent conflicting values
   void AddConflictingValuesClauses();
 
-  /*
-    Get current assignment of a variable from solver and input
-    @param var label for variable to get assignment for
-    @return true or false
-  */
+  /// Get current assignment of a variable from solver and input
+  /// @param var label for variable to get assignment for
+  /// @return true or false
   lbool GetAssignment(size_t var);
 
-  /*
-    Gets a map representing truth assignments for a solution
-    @param solution a vector of ints each entry is a variable, which is assigned 
-    true if positive and false o/w
-    @return a map of variable label to truth assignment
-  */
+  /// Gets a map representing truth assignments for a solution
+  /// @param solution a vector of ints each entry is a variable, which is assigned 
+  /// true if positive and false o/w
+  /// @return a map of variable label to truth assignment
   map<int, bool> GetSolutionMap(const vector<int>& solution);
 
-  /*
-    Get current assignment of a variable from a solution map
-    @param solution a map of variable label to truth assignment
-    @param clone
-    @param mutation
-    @return 0, 1, or 2
-  */
+  /// Get current assignment of a variable from a solution map
+  /// @param solution a map of variable label to truth assignment
+  /// @param clone
+  /// @param mutation
+  /// @return 0, 1, or 2
   int GetAssignmentFromSolution(map<int, bool>& solution, size_t clone, size_t mutation);
   
+  /// Helper method that prints out all the variable matrices for an instance
   void PrintVariableMatrices();
 
 protected:

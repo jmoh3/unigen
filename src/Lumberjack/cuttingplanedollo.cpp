@@ -122,9 +122,6 @@ int CuttingPlaneDollo::separate() {
 
             vector<pair<size_t, size_t>> positions {b_11_pos, b_12_pos, b_21_pos, b_22_pos, b_31_pos, b_32_pos};
             string submatrix_str = getSubmatrixAsString(positions);
-            if (submatrix_str == "100111") {
-              std::cout << "HERE " << "\n";
-            }
 
             if (forbidden_submatrices_.find(submatrix_str) != forbidden_submatrices_.end()) {
               // submatrix is forbidden
@@ -139,7 +136,6 @@ int CuttingPlaneDollo::separate() {
                   clause.push_back(entry_lits[i]);
                 }
               }
-              // std::cout << "Adding clause " << clause << std::endl;
               addClause(clause);
               num_cuts++;
             }

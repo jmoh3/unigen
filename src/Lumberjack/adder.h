@@ -6,16 +6,18 @@
 #define ADDER_H
 
 #include <cryptominisat5/cryptominisat.h>
-#include "matrix.h"
-#include "utils.h"
-#include <approxmc/cuttingplane.h>
 #include <utility>
 #include <vector>
 
 using std::vector;
+using CMSat::Lit;
 
 class Adder {
   public:
+    /**
+     * Constructor
+     * @param start_var the first unused variable label for the formula
+     */
     Adder(int start_var);
 
     /**
@@ -55,23 +57,35 @@ class Adder {
      */
     void Equal(const vector<int>& a, const vector<int>& b);
 
-    const vector<vector<Lit>>& GetClauses() const;
-    const vector<int>& GetIndependentSet() const;
+    const vector<vector<Lit>>& GetClauses() const {
+      return clauses_;
+    }
+
+    const vector<int>& GetIndependentSet() const {
+      return independent_set_;
+    }
   
   protected:
-    int GetTrueVar() const;
-    int GetFalseVar() const;
+    int GetTrueVar() const {
+      return true_var_;
+    }
+
+    int GetFalseVar() const {
+      return -true_var_;
+    }
 
     int GetNewVar(bool independent=false);
 
-    int AND(int a, int b, int r);
-    int OR(int a, int b, int r);
-    int XOR(int a, int b, int r);
+    int AND(int a, int b, int* r = nullptr);
+    int OR(int a, int b, int* r = nullptr);
+    int XOR(int a, int b, int* r = nullptr);
 
     void SetTrue(int var);
 
     void HalfAdder(int a, int b, int result, int carry);
     void FullAdder(int a, int b, int c, int result, int carry);
+
+    vector<Lit> ConvertIntVecToClause(const vector<int>& clause_ints) const;
   
   private:
     vector<vector<Lit>> clauses_;

@@ -75,6 +75,7 @@ class Adder {
     }
 
     int GetNewVar(bool independent=false);
+    vector<int> GetNewVarVector(size_t num_vars);
 
     int AND(int a, int b, int* r = nullptr);
     int OR(int a, int b, int* r = nullptr);
@@ -86,6 +87,8 @@ class Adder {
     void FullAdder(int a, int b, int c, int result, int carry);
 
     vector<Lit> ConvertIntVecToClause(const vector<int>& clause_ints) const;
+
+    vector<int> ConvertIntToBinList(int val, size_t num_bits) const;
   
   private:
     vector<vector<Lit>> clauses_;

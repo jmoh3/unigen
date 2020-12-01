@@ -1,11 +1,12 @@
 #include "samplerdollo.h"
 #include "cuttingplanedollo.h"
+#include "adder.h"
 #include <map>
 
 using std::vector;
 using std::map;
 
-SamplerDollo::SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen)
+SamplerDollo::SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen, double false_pos_rate, double false_neg_rate)
   : B_(B)
   , m_(B.getNrClones())
   , n_(B.getNrMutations())
@@ -17,6 +18,8 @@ SamplerDollo::SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen
   , num_constraints_(0)
   , approxmc_(appmc)
   , unigen_(unigen)
+  , fp_rate_(false_pos_rate)
+  , fn_rate_(false_neg_rate)
 {
 }
 
@@ -27,19 +30,22 @@ void SamplerDollo::Init() {
   unigen_->set_cutting_plane(cutting_plane_);
   approxmc_->setCuttingPlane(cutting_plane_);
 
-  // Update sampling set
-  SATSolver* solver = approxmc_->get_solver();
-  solver->new_vars(num_vars_);
+  Adder adder = GetAdder();
+  num_vars_ += adder.GetNumVarsAdded();
 
-  vector<uint32_t> sampling_set;
-  for (int i = 0; i < num_vars_; ++i)
-  {
-    sampling_set.push_back(i);
-  }
-  approxmc_->set_sampling_set(sampling_set);
+  std::cout << "Updating sampling set\n";
+  UpdateSamplingSet();
 
   std::cout << "Adding conflicting clauses\n";
   AddConflictingValuesClauses();
+
+  std::cout << "Adding fp and fn constraint clauses\n";
+  vector<vector<Lit>> adder_clauses = adder.GetClauses();
+
+  for (auto clause : adder_clauses) {
+    approxmc_->add_clause(clause);
+  }
+
   approxmc_->get_solver()->dump_irred_clauses(&std::cout);
 }
 
@@ -67,6 +73,38 @@ void SamplerDollo::InitializeVariableMatrices() {
   }
 }
 
+Adder SamplerDollo::GetAdder() {
+  Adder adder(num_vars_);
+
+  // false negative constraints
+  vector<int> false_neg_flattened;
+  for (auto row : false_neg_vars_) {
+    for (auto var : row) {
+      if (var != 0) {
+        false_neg_flattened.push_back(var);
+      }
+    }
+  }
+  size_t max_fn = fn_rate_ * false_neg_flattened.size();
+  std::cout << "Max num false negatives: " << max_fn << std::endl;
+  adder.EncodeEqualToK(false_neg_flattened, max_fn);
+
+  // false positive constraints
+  vector<int> false_pos_flattened;
+  for (auto row : false_pos_vars_) {
+    for (auto var : row) {
+      if (var != 0) {
+        false_pos_flattened.push_back(var);
+      }
+    }
+  }
+  size_t max_fp = fp_rate_ * false_pos_flattened.size();
+  std::cout << "Max num false positives: " << max_fp << std::endl;
+  adder.EncodeEqualToK(false_pos_flattened, max_fp);
+
+  return adder;
+}
+
 void SamplerDollo::AddConflictingValuesClauses() {
   for (size_t i = 0; i < m_; i++) {
     for (size_t j = 0; j < n_; j++) {
@@ -85,6 +123,19 @@ void SamplerDollo::AddConflictingValuesClauses() {
   }
 }
 
+void SamplerDollo::UpdateSamplingSet() {
+  // Update sampling set
+  SATSolver* solver = approxmc_->get_solver();
+  solver->new_vars(num_vars_);
+
+  vector<uint32_t> sampling_set;
+  for (int i = 0; i < num_vars_; ++i)
+  {
+    sampling_set.push_back(i);
+  }
+  approxmc_->set_sampling_set(sampling_set);
+}
+
 void SamplerDollo::Sample(const ApproxMC::SolCount *sol_count, uint32_t num_samples) {
   vector<vector<int>> solutions = unigen_->sample(sol_count, num_samples);
 
@@ -93,13 +144,25 @@ void SamplerDollo::Sample(const ApproxMC::SolCount *sol_count, uint32_t num_samp
   for (auto solution : solutions) {
     std::cout << "===================\n";
     map<int, bool> sol_map = GetSolutionMap(solution);
+
+    size_t num_fn = 0;
+    size_t num_fp = 0;
+
     for (size_t i = 0; i < m_; i++) {
       for (size_t j = 0; j < n_; j++) {
         int entry = GetAssignmentFromSolution(sol_map, i, j);
         std::cout << entry << " ";
+
+        if (entry == 1 && B_.getEntry(i, j) == 0) {
+          num_fn++;
+        }
+        if ((entry == 2 || entry == 0) && B_.getEntry(i, j) == 1) {
+          num_fp++;
+        }
       }
       std::cout << "\n";
     }
+    std::cout << "# false negatives: " << num_fn << "\n# false positives: " << num_fp << "\n";
   }
 }
 

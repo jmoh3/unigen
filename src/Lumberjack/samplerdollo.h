@@ -12,6 +12,7 @@
 #include <approxmc/approxmc.h>
 #include "cuttingplanedollo.h"
 #include "unigen/unigen.h"
+#include "adder.h"
 #include <map>
 
 using namespace UniGen;
@@ -28,11 +29,14 @@ public:
   /// Constructor
   /// @param B Input matrix
   /// @param k Maximum number of losses per character
-  SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen);
+  /// @param appmc pointer to ApproxMC object
+  /// @param unigen pointer to UniGen object
+  /// @param false_pos_rate rate at which false positives occur in SCS data
+  /// @param false_neg_rate rate at which false negatives occur in SCS data
+  SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen, double false_pos_rate=0.01, double false_neg_rate=0.5);
   
   /// Initializes solver
   virtual void Init();
-  
   
   /// Samples solutions from current 1-Dollo instance
   /// @param sol_count
@@ -43,7 +47,6 @@ protected:
 
   /// Initializes variable matrices that define entries of corrected matrix
   void InitializeVariableMatrices();
-
 
   /// Get clauses that prevent conflicting values
   /// @return vector of clauses that prevent conflicting values
@@ -66,6 +69,11 @@ protected:
   /// @param mutation
   /// @return 0, 1, or 2
   int GetAssignmentFromSolution(map<int, bool>& solution, size_t clone, size_t mutation);
+
+  /// Helper method that gets an adder object for the current instance
+  Adder GetAdder();
+
+  void UpdateSamplingSet();
   
   /// Helper method that prints out all the variable matrices for an instance
   void PrintVariableMatrices();
@@ -80,7 +88,12 @@ protected:
   const size_t n_;
   /// Maximum number of losses
   const size_t k_;
-  
+
+  /// False negative rate
+  const double fn_rate_;
+  /// False positive rate
+  const double fp_rate_;
+
   /// loss_vars_[p][c] maps matrix entries to their loss variables
   StlIntMatrix loss_vars_;
   /// false_pos_vars_ maps matrix entries to false positive variables

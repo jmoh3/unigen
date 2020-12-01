@@ -38,6 +38,7 @@
 #include <approxmc/cuttingplane.h>
 
 using ApproxMC::CuttingPlane;
+using std::vector;
 
 namespace ApproxMC {
     class AppMC;

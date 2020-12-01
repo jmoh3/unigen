@@ -64,6 +64,14 @@ class Adder {
     const vector<int>& GetIndependentSet() const {
       return independent_set_;
     }
+
+    size_t GetFirstUnusedVar() const {
+      return current_var_;
+    }
+
+    size_t GetNumVarsAdded() const {
+      return current_var_ - true_var_;
+    }
   
   protected:
     int GetTrueVar() const {

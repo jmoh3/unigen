@@ -137,7 +137,7 @@ void Adder::FullAdder(int a, int b, int c, int result, int carry) {
     OR(c1, c2, &carry);
 }
 
-int Adder::AND(int a, int b, int* r = nullptr) {
+int Adder::AND(int a, int b, int* r) {
     if (r == nullptr) {
         int new_var = GetNewVar();
         r = &new_var;
@@ -155,7 +155,7 @@ int Adder::AND(int a, int b, int* r = nullptr) {
     return r_var;
 }
 
-int Adder::OR(int a, int b, int* r = nullptr) {
+int Adder::OR(int a, int b, int* r) {
     if (r == nullptr) {
         int new_var = GetNewVar();
         r = &new_var;
@@ -173,7 +173,7 @@ int Adder::OR(int a, int b, int* r = nullptr) {
     return r_var;
 }
 
-int Adder::XOR(int a, int b, int* r = nullptr) {
+int Adder::XOR(int a, int b, int* r) {
     if (r == nullptr) {
         int new_var = GetNewVar();
         r = &new_var;
@@ -203,7 +203,7 @@ vector<int> Adder::GetNewVarVector(size_t num_vars) {
     return new_vars;
 }
 
-int Adder::GetNewVar(bool independent=false) {
+int Adder::GetNewVar(bool independent) {
     int new_var = current_var_;
     if (independent) {
         independent_set_.push_back(new_var);

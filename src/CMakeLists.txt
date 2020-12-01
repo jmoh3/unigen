@@ -67,6 +67,7 @@ set (lumberjack_src
     Lumberjack/samplerdollo.cpp
     Lumberjack/matrix.cpp
     Lumberjack/utils.cpp
+    Lumberjack/adder.cpp
     sampler.cpp
 )
 
@@ -75,6 +76,7 @@ set (lumberjack_hdr
     Lumberjack/samplerdollo.h
     Lumberjack/matrix.h
     Lumberjack/utils.h
+    Lumberjack/adder.h
     sampler.h
 )
 

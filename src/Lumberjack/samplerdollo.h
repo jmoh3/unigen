@@ -14,11 +14,13 @@
 #include "unigen/unigen.h"
 #include "adder.h"
 #include <map>
+#include <vector>
 
 using namespace UniGen;
 using ApproxMC::AppMC;
 using ApproxMC::SolCount;
 using std::map;
+using std::vector;
 
 /// This class provides a cutting plane wrapper for CryptoMiniSAT
 /// This can be used to solve the the k-DP problem .
@@ -73,10 +75,15 @@ protected:
   /// Helper method that gets an adder object for the current instance
   Adder GetAdder();
 
+  /// Updates approxmc_'s sampling set with new variables
   void UpdateSamplingSet();
   
   /// Helper method that prints out all the variable matrices for an instance
   void PrintVariableMatrices();
+
+  /// Gets a new unused variable label
+  /// @return new variable
+  int GetNewVar();
 
 protected:
 
@@ -94,12 +101,27 @@ protected:
   /// False positive rate
   const double fp_rate_;
 
-  /// loss_vars_[p][c] maps matrix entries to their loss variables
+  /// loss_vars_ maps matrix entries to their loss variables
   StlIntMatrix loss_vars_;
   /// false_pos_vars_ maps matrix entries to false positive variables
   StlIntMatrix false_pos_vars_;
   /// false_neg_vars_ maps matrix entries to false positive variables
   StlIntMatrix false_neg_vars_;
+
+  /// pair_in_row_equal_[i][j][k] is true if the ith element of row j and row k are equal
+  vector<vector<vector<int>>> pair_in_row_equal_;
+  /// pair_in_col_equal_[i][j][k] is true if the kth element of col i and col j are equal
+  vector<vector<vector<int>>> pair_in_col_equal_;
+
+  /// row_is_duplicate_of_[i][j] is true if row i is equal to row j
+  vector<vector<int>> row_is_duplicate_of_;
+  /// col_is_duplicate_of_[i][j] is true if col i is equal to col j
+  vector<vector<int>> col_is_duplicate_of_;
+
+  /// row_is_duplicate_[i] is true if row i is a duplicate of some previous row 0,1,..,i-1
+  vector<int> row_is_duplicate_;
+  /// col_is_duplicate_[i] is true if col i is a duplicate of some previous col 0,1,..,i-1
+  vector<int> col_is_duplicate_;
   
   /// Number of variables
   int num_vars_;

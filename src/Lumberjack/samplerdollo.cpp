@@ -45,8 +45,6 @@ void SamplerDollo::Init() {
   for (auto clause : adder_clauses) {
     approxmc_->add_clause(clause);
   }
-
-  approxmc_->get_solver()->dump_irred_clauses(&std::cout);
 }
 
 void SamplerDollo::InitializeVariableMatrices() {
@@ -60,16 +58,67 @@ void SamplerDollo::InitializeVariableMatrices() {
     false_neg_vars_[i].resize(n_);
 
     for (size_t j = 0; j < n_; j++) {
-      loss_vars_[i][j] = num_vars_;
-      num_vars_++;
+      loss_vars_[i][j] = GetNewVar();
       
       if (B_.getEntry(i, j) == 1) {
-        false_pos_vars_[i][j] = num_vars_;
+        false_pos_vars_[i][j] = GetNewVar();
       } else {
-        false_neg_vars_[i][j] = num_vars_;
+        false_neg_vars_[i][j] = GetNewVar();
       }
-      num_vars_++;
     }
+  }
+
+  // begin clustering vars
+  pair_in_row_equal_.resize(m_);
+  for (size_t i = 0; i < m_; i++) {
+    pair_in_row_equal_[i].resize(n_);
+    
+    for (size_t j = 0; j < n_; j++) {
+      pair_in_row_equal_[i][j].resize(n_);
+      
+      for (size_t k = j+1; k < n_; k++) {
+        pair_in_row_equal_[i][j][k] = GetNewVar();
+      }
+    }
+  }
+
+  pair_in_col_equal_.resize(n_);
+  for (size_t i = 0; i < n_; i++) {
+    pair_in_col_equal_[i].resize(m_);
+    
+    for (size_t j = 0; j < m_; j++) {
+      pair_in_col_equal_[i][j].resize(m_);
+      
+      for (size_t k = j+1; k < m_; k++) {
+        pair_in_col_equal_[i][j][k] = GetNewVar();
+      }
+    }
+  }
+
+  row_is_duplicate_of_.resize(m_);
+  for (size_t i = 0; i < m_; i++) {
+    row_is_duplicate_of_[i].resize(m_);
+    for (size_t j = i+1; j < m_; j++) {
+      row_is_duplicate_of_[i][j] = GetNewVar();
+    }
+  }
+
+  col_is_duplicate_of_.resize(n_);
+  for (size_t i = 0; i < n_; i++) {
+    col_is_duplicate_of_[i].resize(n_);
+    for (size_t j = i+1; j < n_; j++) {
+      col_is_duplicate_of_[i][j] = GetNewVar();
+    }
+  }
+
+  row_is_duplicate_.resize(m_);
+  for (size_t i = 0; i < m_; i++) {
+    row_is_duplicate_[i] = GetNewVar();
+  }
+
+  col_is_duplicate_.resize(n_);
+  for (size_t i = 0; i < n_; i++) {
+    col_is_duplicate_[i] = GetNewVar();
   }
 }
 
@@ -210,6 +259,56 @@ void SamplerDollo::PrintVariableMatrices() {
 
     std::cout << "\n";
   }
+
+  std::cout << "Pair in row equal" << std::endl;
+
+  for (size_t i = 0; i < m_; i++) {
+    std::cout << "Row " << i << std::endl;
+    for (size_t j = 0; j < n_; j++) {      
+      for (size_t k = j+1; k < n_; k++) {
+        std::cout << "B_["<<i<<"]["<<j<<"] = B_["<<i<<"]["<<k<<"] <=> var "<< pair_in_row_equal_[i][j][k] << std::endl;
+      }
+    }
+  }
+
+  std::cout << "Pair in column equal" << std::endl;
+
+  for (size_t i = 0; i < n_; i++) {
+    std::cout << "Column " << i << std::endl;
+    for (size_t j = 0; j < m_; j++) {      
+      for (size_t k = j+1; k < m_; k++) {
+        std::cout << "B_["<<j<<"]["<<i<<"] = B_["<<k<<"]["<<i<<"] <=> var "<< pair_in_col_equal_[i][j][k] << std::endl;
+      }
+    }
+  }
+
+  std::cout << "Row is duplicate of " << std::endl;
+
+  for (size_t i = 0; i < m_; i++) {
+    for (size_t j = i+1; j < m_; j++) {
+      std::cout << "B["<<i<<"] == B["<<j<<"] <=> var " << row_is_duplicate_of_[i][j] << std::endl;
+    }
+  }
+
+  std::cout << "Col is duplicate of " << std::endl;
+
+  for (size_t i = 0; i < n_; i++) {
+    for (size_t j = i+1; j < n_; j++) {
+      std::cout << "B[:,"<<i<<"] == B[:,"<<j<<"] <=> var " << col_is_duplicate_of_[i][j] << std::endl;
+    }
+  }
+
+  std::cout << "Row is duplicate" << std::endl;
+
+  for (size_t i = 0; i < m_; i++) {
+    std::cout << "Row "<<i<<" is duplicate <=> var " << row_is_duplicate_[i] << std::endl;
+  }
+
+  std::cout << "Col is duplicate" << std::endl;
+
+  for (size_t i = 0; i < n_; i++) {
+    std::cout << "Col "<<i<<" is duplicate <=> var " << col_is_duplicate_[i] << std::endl;
+  }
 }
 
 map<int, bool> SamplerDollo::GetSolutionMap(const vector<int>& solution) {
@@ -237,4 +336,10 @@ int SamplerDollo::GetAssignmentFromSolution(map<int, bool>& solution, size_t clo
   }
 
   return 1;
+}
+
+int SamplerDollo::GetNewVar() {
+  int new_var = num_vars_;
+  num_vars_++;
+  return new_var;
 }

@@ -483,8 +483,6 @@ vector<vector<int>> Sampler::generate_samples(const uint32_t num_samples_needed)
 
     cout << "c [unig] Samples generated: " << samples << endl;
 
-    cout << "Actually " << out_solutions.size() << endl;
-
     return out_solutions;
 }
 

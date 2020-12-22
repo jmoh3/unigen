@@ -6,7 +6,9 @@
 using std::vector;
 using std::map;
 
-SamplerDollo::SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen, double false_pos_rate, double false_neg_rate)
+SamplerDollo::SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen, 
+     size_t cell_clusters, size_t mutation_clusters,
+     double false_pos_rate=0.01, double false_neg_rate=0.5)
   : B_(B)
   , m_(B.getNrClones())
   , n_(B.getNrMutations())
@@ -20,6 +22,8 @@ SamplerDollo::SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen
   , unigen_(unigen)
   , fp_rate_(false_pos_rate)
   , fn_rate_(false_neg_rate)
+  , num_cell_clusters_(cell_clusters)
+  , num_mutation_clusters_(mutation_clusters)
 {
 }
 
@@ -38,6 +42,13 @@ void SamplerDollo::Init() {
 
   std::cout << "Adding conflicting clauses\n";
   AddConflictingValuesClauses();
+
+  std::cout << "Adding clustering clauses\n";
+  AddColPairsEqualClauses();
+  AddRowPairsEqualClauses();
+
+  AddRowDuplicateClauses();
+  AddColDuplicateClauses();
 
   std::cout << "Adding fp and fn constraint clauses\n";
   vector<vector<Lit>> adder_clauses = adder.GetClauses();
@@ -151,6 +162,14 @@ Adder SamplerDollo::GetAdder() {
   std::cout << "Max num false positives: " << max_fp << std::endl;
   adder.EncodeEqualToK(false_pos_flattened, max_fp);
 
+  // Row clustering constraints
+  size_t num_row_duplicates = m_ - num_cell_clusters_;
+  adder.EncodeEqualToK(row_is_duplicate_, num_row_duplicates);
+
+  // Column clustering constraints
+  size_t num_col_duplicates = n_ - num_mutation_clusters_;
+  adder.EncodeEqualToK(col_is_duplicate_, num_col_duplicates);
+
   return adder;
 }
 
@@ -168,6 +187,134 @@ void SamplerDollo::AddConflictingValuesClauses() {
       }
 
       approxmc_->add_clause(clause);
+    }
+  }
+}
+
+void SamplerDollo::AddRowDuplicateClauses() {
+  for (size_t row2 = 1; row2 < m_; row2++) {
+    // row_is_duplicate[row] => 
+    // row_is_duplicate_of[0][row] or ... row_is_duplicate_of[row-1][row]
+    vector<int> clause_only_if { row_is_duplicate_[row2] };
+    for (size_t row1 = 0; row1 < row2; row1++) {
+      // pair_in_col_equal[smaller][row][0] and ... pair_in_col_equal[smaller][row][n]
+      // => row_is_duplicate_of[smaller][row]
+      vector<int> clause_if;
+      
+      for (size_t col = 0; col < n_; col++) {
+        clause_if.push_back(-pair_in_col_equal_[col][row1][row2]);
+
+        // row_is_duplicate_of[smaller][row] => pair_in_col_equal[smaller][row][col]
+        vector<int> pair_in_col_clause { -row_is_duplicate_of_[row1][row2], pair_in_col_equal_[col][row1][row2] };
+        AddClause(pair_in_col_clause);
+      }
+
+      clause_if.push_back(row_is_duplicate_of_[row1][row2]);
+      AddClause(clause_if);
+
+      // row_is_duplicate_of[smaller][row] => row_is_duplicate[row]
+      vector<int> row_is_duplicate_clause { -row_is_duplicate_of_[row1][row2], row_is_duplicate_[row2] };
+      AddClause(row_is_duplicate_clause);
+
+      clause_only_if.push_back(row_is_duplicate_of_[row1][row2]);
+    }
+
+    AddClause(clause_only_if);
+  }
+
+  // first row cannot be a duplicate
+  vector<int> first_row_clause { -row_is_duplicate_[0] };
+  AddClause(first_row_clause);
+}
+
+void SamplerDollo::AddColDuplicateClauses() {
+  for (size_t col2 = 1; col2 < m_; col2++) {
+    // col_is_duplicate[col] =>
+    // col_is_duplicate_of[0][col] or ... col_is_duplicate_of[col-1][col]
+    vector<int> clause_only_if { col_is_duplicate_[col2] };
+    for (size_t col1 = 0; col1 < col2; col1++) {
+      // pair_in_row_equal[0][smaller_col][col] and ... pair_in_row_equal[n][smaller_col][col]
+      // => col_is_duplicate_of[smaller_col][col]
+      vector<int> clause_if;
+      
+      for (size_t row = 0; row < n_; row++) {
+        clause_if.push_back(-pair_in_row_equal_[row][col1][col2]);
+
+        // col_is_duplicate_of[smaller_col][col] => pair_in_row_equal[row][smaller_col][col]
+        vector<int> pair_in_col_clause { -col_is_duplicate_of_[col1][col2], pair_in_row_equal_[row][col1][col2] };
+        AddClause(pair_in_col_clause);
+      }
+
+      clause_if.push_back(col_is_duplicate_of_[col1][col2]);
+      AddClause(clause_if);
+
+      // col_is_duplicate_of[smaller][col] => col_is_duplicate[col]
+      vector<int> row_is_duplicate_clause { -col_is_duplicate_of_[col1][col2], col_is_duplicate_[col2] };
+      AddClause(row_is_duplicate_clause);
+
+      clause_only_if.push_back(col_is_duplicate_of_[col1][col2]);
+    }
+
+    AddClause(clause_only_if);
+  }
+
+  // first col cannot be a duplicate
+  vector<int> first_col_clause { -col_is_duplicate_[0] };
+  AddClause(first_col_clause);
+}
+
+void SamplerDollo::AddRowPairsEqualClauses() { 
+  for (size_t row = 0; row < m_; row++) {
+    for (size_t col1 = 0; col1 < n_; col1++) {
+      for (size_t col2 = col1+1; col2 < n_; col2++) {
+        int pair_in_row_equal_var = pair_in_row_equal_[row][col1][col2];
+        
+        /// BOTH ENTRIES ARE 1
+        int rowcol1_is_one = GetEntryIsOneVar(row, col1);
+        int rowcol2_is_one = GetEntryIsOneVar(row, col2);
+        
+        SetPairOfVarsEqual(rowcol1_is_one, rowcol2_is_one, pair_in_row_equal_var);
+
+        /// BOTH ENTRIES ARE 2
+        int rowcol1_is_two = loss_vars_[row][col1];
+        int rowcol2_is_two = loss_vars_[row][col2];
+
+        SetPairOfVarsEqual(rowcol1_is_two, rowcol2_is_two, pair_in_row_equal_var);
+
+        // BOTH ENTRIES ARE 0
+        vector<int> rowcol1_is_zero = GetEntryIsZeroVars(row, col1);
+        vector<int> rowcol2_is_zero = GetEntryIsZeroVars(row, col2);
+
+        SetPairOfVarsEqual(rowcol1_is_zero, rowcol2_is_zero, pair_in_row_equal_var);
+      }
+    }
+  }
+}
+
+void SamplerDollo::AddColPairsEqualClauses() { 
+  for (size_t col = 0; col < n_; col++) {
+    for (size_t row1 = 0; row1 < m_; row1++) {
+      for (size_t row2 = row1+1; row2 < m_; row2++) {
+        int pair_in_col_equal_var = pair_in_col_equal_[col][row1][row2];
+        
+        /// BOTH ENTRIES ARE 1
+        int row1col_is_one = GetEntryIsOneVar(row1, col);
+        int row2col_is_one = GetEntryIsOneVar(row2, col);
+        
+        SetPairOfVarsEqual(row1col_is_one, row2col_is_one, pair_in_col_equal_var);
+
+        /// BOTH ENTRIES ARE 2
+        int row1col_is_two = loss_vars_[row1][col];
+        int row2col_is_two = loss_vars_[row2][col];
+
+        SetPairOfVarsEqual(row1col_is_two, row2col_is_two, pair_in_col_equal_var);
+
+        // BOTH ENTRIES ARE 0
+        vector<int> row1col_is_zero = GetEntryIsZeroVars(row1, col);
+        vector<int> row2col_is_zero = GetEntryIsZeroVars(row2, col);
+
+        SetPairOfVarsEqual(row1col_is_zero, row2col_is_zero, pair_in_col_equal_var);
+      }
     }
   }
 }
@@ -342,4 +489,100 @@ int SamplerDollo::GetNewVar() {
   int new_var = num_vars_;
   num_vars_++;
   return new_var;
+}
+
+int SamplerDollo::GetEntryIsOneVar(size_t row, size_t col) const {
+  if (B_.getEntry(row, col) == 0) {
+    return false_neg_vars_[row][col];
+  }
+  return -false_pos_vars_[row][col];
+}
+
+vector<int> SamplerDollo::GetEntryIsZeroVars(size_t row, size_t col) const {
+  vector<int> zero_vars;
+  zero_vars.push_back(-loss_vars_[row][col]);
+
+  if (B_.getEntry(row, col) == 0) {
+    zero_vars.push_back(-false_neg_vars_[row][col]);
+  } else {
+    zero_vars.push_back(false_pos_vars_[row][col]);
+  }
+  
+  return zero_vars;
+}
+
+void SamplerDollo::AddClause(vector<int> clause) {
+  vector<Lit> lits;
+
+  for (auto var : clause) {
+    int label = abs(var);
+    bool is_inverted = var < 0;
+    
+    Lit lit(label, is_inverted);
+    lits.push_back(lit);
+  }
+
+  approxmc_->add_clause(lits);
+}
+
+void SamplerDollo::AddClauses(vector<vector<int>> clauses) {
+  for (auto clause : clauses) {
+    AddClause(clause);
+  }
+}
+
+void SamplerDollo::AddImplyClause(vector<int> lhs, int rhs) {
+  vector<int> clause;
+
+  for (auto var : lhs) {
+    clause.push_back(-var);
+  }
+
+  clause.push_back(rhs);
+  
+  AddClause(clause);
+}
+
+void SamplerDollo::AddImplyClauses(vector<int> lhs, vector<int> rhs) {
+  vector<vector<int>> clauses;
+
+  for (auto var : rhs) {
+    AddImplyClause(lhs, var);
+  }
+}
+
+void SamplerDollo::SetPairOfVarsEqual(int entry1, int entry2, int pair_equal_var) {
+  vector<vector<int>> clauses;
+
+  // entry1 == value and entry2 == value => pair_equal
+  vector<int> lhs { entry1, entry2 };
+  AddImplyClause(lhs, pair_equal_var);
+
+  // pair_equal and entry1 == value => entry2 == value
+  lhs = vector<int> { entry1, pair_equal_var };
+  AddImplyClause(lhs, entry2);
+
+  // pair_equal and entry2 == value => entry1 == value
+  lhs = vector<int> { entry2, pair_equal_var };
+  AddImplyClause(lhs, entry1);
+}
+
+void SamplerDollo::SetPairOfVarsEqual(vector<int> entry1, vector<int> entry2, int pair_equal_var) {
+  vector<vector<int>> clauses;
+
+  // entry1 == 1 and entry2 == 1 => pair_equal
+  vector<int> lhs;
+  lhs.insert(lhs.begin(), entry1.begin(), entry1.end());
+  lhs.insert(lhs.begin(), entry2.begin(), entry2.end());
+  AddImplyClause(lhs, pair_equal_var);
+
+  // pair_equal and entry1 == 1 => entry2 == 1
+  lhs = vector<int> { pair_equal_var };
+  lhs.insert(lhs.begin(), entry1.begin(), entry1.end());
+  AddImplyClauses(lhs, entry2);
+
+  // pair_equal and entry2 == 1 => entry1 == 1
+  lhs = vector<int> { pair_equal_var };
+  lhs.insert(lhs.begin(), entry2.begin(), entry2.end());
+  AddImplyClauses(lhs, entry1);
 }

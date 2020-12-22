@@ -35,7 +35,9 @@ public:
   /// @param unigen pointer to UniGen object
   /// @param false_pos_rate rate at which false positives occur in SCS data
   /// @param false_neg_rate rate at which false negatives occur in SCS data
-  SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen, double false_pos_rate=0.01, double false_neg_rate=0.5);
+  SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen, 
+     size_t cell_clusters, size_t mutation_clusters,
+     double false_pos_rate=0.01, double false_neg_rate=0.5);
   
   /// Initializes solver
   virtual void Init();
@@ -50,9 +52,20 @@ protected:
   /// Initializes variable matrices that define entries of corrected matrix
   void InitializeVariableMatrices();
 
-  /// Get clauses that prevent conflicting values
-  /// @return vector of clauses that prevent conflicting values
+  /// Add clauses that prevent conflicting values to CNF formula
   void AddConflictingValuesClauses();
+
+  /// Adds clauses that enforce the values of the pair in column equal variables
+  /// i.e. B[row1][col] == B[row2][col] => pair_in_col_equal[col][row1][row2]
+  void AddColPairsEqualClauses();
+
+  /// Adds clauses that enforce the values of the pair in row equal variables
+  /// i.e. B[row][col1] == B[row][col2] => pair_in_row_equal[row][col1][col2]
+  void AddRowPairsEqualClauses();
+
+  void AddRowDuplicateClauses();
+
+  void AddColDuplicateClauses();
 
   /// Get current assignment of a variable from solver and input
   /// @param var label for variable to get assignment for
@@ -85,6 +98,40 @@ protected:
   /// @return new variable
   int GetNewVar();
 
+  /// Gets the variable label corresponding to entry at row, col being one
+  /// @return variable label
+  int GetEntryIsOneVar(size_t row, size_t col) const;
+
+  /// Gets variable labels corresponding to entry at row, col being zero
+  /// @return variable label
+  vector<int> GetEntryIsZeroVars(size_t row, size_t col) const;
+
+  /// Adds clauses to current formula
+  /// @param clauses clauses to add
+  void AddClauses(vector<vector<int>> clauses);
+
+  /// Adds clause to current formula
+  /// @param clause clause to add
+  void AddClause(vector<int> clause);
+
+  /// Adds a clause to imply lhs => rhs in formula
+  /// @param lhs the literals on the left hand side of implication
+  /// @param rhs the literal on the right hand side of the implication
+  void AddImplyClause(vector<int> lhs, int rhs);
+  
+  /// Adds clauses to imply lhs => rhs in formula
+  /// rhs.size() clauses will be added
+  /// @param lhs the literals on the left hand side of implication
+  /// @param rhs the literals on the right hand side of the implication
+  void AddImplyClauses(vector<int> lhs, vector<int> rhs);
+
+  /// Adds clauses to imply entry1 == entry2 => pair_equal_var
+  void SetPairOfVarsEqual(int entry1, int entry2, int pair_equal_var);
+
+  /// Adds clauses to imply entry1 == entry2 => pair_equal_var
+  /// Overloaded function for when multiple variables correspond to one entry
+  void SetPairOfVarsEqual(vector<int> entry1, vector<int> entry2, int pair_equal_var);
+
 protected:
 
   /// Input matrix
@@ -100,6 +147,9 @@ protected:
   const double fn_rate_;
   /// False positive rate
   const double fp_rate_;
+
+  const size_t num_cell_clusters_;
+  const size_t num_mutation_clusters_;
 
   /// loss_vars_ maps matrix entries to their loss variables
   StlIntMatrix loss_vars_;

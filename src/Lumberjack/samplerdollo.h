@@ -78,6 +78,12 @@ protected:
   /// @return a map of variable label to truth assignment
   map<int, bool> GetSolutionMap(const vector<int>& solution);
 
+  /// Gets resulting solution matrix
+  vector<vector<int>> GetSolMatrix(map<int, bool> sol_map);
+
+  /// Checks to make sure all clustering variables are all correctly set.
+  void ValidateSolution(map<int, bool> sol_map, vector<vector<int>> sol_matrix);
+
   /// Get current assignment of a variable from a solution map
   /// @param solution a map of variable label to truth assignment
   /// @param clone

@@ -16,7 +16,9 @@ CuttingPlaneDollo::CuttingPlaneDollo(SATSolver* solver,
                     const Matrix& B,
                     StlIntMatrix& loss_vars,
                     StlIntMatrix& false_neg_vars,
-                    StlIntMatrix& false_pos_vars)
+                    StlIntMatrix& false_pos_vars,
+                    StlIntVector& row_duplicate_vars,
+                    StlIntVector& col_duplicate_vars)
   : CuttingPlane(solver)
   , B_(B)
   , m_(B.getNrClones())
@@ -24,6 +26,8 @@ CuttingPlaneDollo::CuttingPlaneDollo(SATSolver* solver,
   , loss_vars_(loss_vars)
   , false_neg_vars_(false_neg_vars)
   , false_pos_vars_(false_pos_vars)
+  , row_duplicate_vars_(row_duplicate_vars)
+  , col_duplicate_vars_(col_duplicate_vars)
 {
 }
 
@@ -136,6 +140,14 @@ int CuttingPlaneDollo::separate() {
                   clause.push_back(entry_lits[i]);
                 }
               }
+              // add on literals that allow clause to be "violated" if a row or column is a duplicate
+              clause.push_back(Lit(row_duplicate_vars_[row1], false));
+              clause.push_back(Lit(row_duplicate_vars_[row2], false));
+              clause.push_back(Lit(row_duplicate_vars_[row3], false));
+
+              clause.push_back(Lit(col_duplicate_vars_[col1], false));
+              clause.push_back(Lit(col_duplicate_vars_[col2], false));
+
               addClause(clause);
               num_cuts++;
             }

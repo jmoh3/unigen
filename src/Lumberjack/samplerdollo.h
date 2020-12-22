@@ -63,8 +63,17 @@ protected:
   /// i.e. B[row][col1] == B[row][col2] => pair_in_row_equal[row][col1][col2]
   void AddRowPairsEqualClauses();
 
+  /// Adds clauses that enforce the values of row duplicate variables
+  /// i.e. pair_in_col_equal[0][row1][row2] and ... and pair_in_col_equal[n][row1][row2] <=> 
+  /// row_is_duplicate_of[row1][row2]
+  /// and
+  /// row_is_duplicate_of[row1][row2] => row_is_duplicate[row2]
+  /// and
+  /// row_is_duplicate[row2] => 
+  /// row_is_duplicate_of[0][row2] or ... or row_is_duplicate_of[row2-1][row2]
   void AddRowDuplicateClauses();
 
+  /// Adds clauses that enforce the values of column duplicate variables
   void AddColDuplicateClauses();
 
   /// Get current assignment of a variable from solver and input

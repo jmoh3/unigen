@@ -16,7 +16,7 @@ void SamplerDollo::Init()
 {
   InitializeVariableMatrices();
   PrintVariableMatrices();
-  cutting_plane_ = new CuttingPlaneDollo(approxmc_->get_solver(), B_, loss_vars_, false_neg_vars_, false_pos_vars_);
+  cutting_plane_ = new CuttingPlaneDollo(approxmc_->get_solver(), B_, loss_vars_, false_neg_vars_, false_pos_vars_, row_is_duplicate_, col_is_duplicate_);
   unigen_->set_cutting_plane(cutting_plane_);
   approxmc_->setCuttingPlane(cutting_plane_);
 

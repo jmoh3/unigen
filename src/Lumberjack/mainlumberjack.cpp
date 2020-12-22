@@ -77,6 +77,12 @@ uint32_t reuse_models = 1;
 uint32_t force_sol_extension = 0;
 uint32_t sparse;
 
+// dolloSAT
+double false_negative_rate = 0.5;
+double false_positive_rate = 0.01;
+int32_t num_cell_clusters = -1;
+int32_t num_mutation_clusters = -1;
+
 //sampling
 uint32_t num_samples = 20;
 int only_indep_samples ;
@@ -125,6 +131,15 @@ void add_UniGen_options()
     ("verb,v", po::value(&verbosity)->default_value(1), "verbosity")
     ("seed,s", po::value(&seed)->default_value(seed), "Seed")
     ("version", "Print version info")
+
+    ("fp_rate,p", po::value(&false_positive_rate)->default_value(false_positive_rate)
+        , "False positive rate of SCS method")
+    ("fn_rate,n", po::value(&false_negative_rate)->default_value(false_negative_rate)
+        , "False negative rate of SCS method")
+    ("num_cell_clusters,c", po::value(&num_cell_clusters)
+        , "Number of cell clusters in output matrix")
+    ("num_mutation_clusters,m", po::value(&num_mutation_clusters)
+        , "Number of mutation clusters in output matrix")
 
     ("epsilon", po::value(&epsilon)->default_value(epsilon, my_epsilon.str())
         , "epsilon parameter as per PAC guarantees")
@@ -420,7 +435,14 @@ int main(int argc, char** argv)
         read_stdin();
     }
 
-    SamplerDollo sampler(D, 2, appmc, unigen, 2, 2);
+    if (num_cell_clusters == -1) {
+        num_cell_clusters = D.getNrClones();
+    }
+    if (num_mutation_clusters == -1) {
+        num_cell_clusters = D.getNrMutations();
+    }
+
+    SamplerDollo sampler(D, 2, appmc, unigen, num_cell_clusters, num_mutation_clusters, false_positive_rate, false_negative_rate);
     sampler.Init();
 
     std::cout << "After reading input matrix:\n";

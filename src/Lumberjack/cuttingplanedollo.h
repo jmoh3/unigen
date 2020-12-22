@@ -31,7 +31,9 @@ public:
                     const Matrix& B,
                     StlIntMatrix& loss_vars,
                     StlIntMatrix& false_neg_vars,
-                    StlIntMatrix& false_pos_vars);
+                    StlIntMatrix& false_pos_vars,
+                    StlIntVector& row_duplicate_vars,
+                    StlIntVector& col_duplicate_vars);
   
 protected:
   
@@ -86,6 +88,10 @@ protected:
   /// false_pos_vars maps matrix entries to false pos variables
   StlIntMatrix& false_pos_vars_;
   
+  /// row_duplicate_vars_ maps row indices to row duplicate variables
+  StlIntVector& row_duplicate_vars_;
+  /// col_duplicate_vars_ maps column indices to column duplicate variables
+  StlIntVector& col_duplicate_vars_;
 };
 
 #endif // COLUMNGEN_H

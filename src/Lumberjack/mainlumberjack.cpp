@@ -420,7 +420,7 @@ int main(int argc, char** argv)
         read_stdin();
     }
 
-    SamplerDollo sampler(D, 2, appmc, unigen);
+    SamplerDollo sampler(D, 2, appmc, unigen, 3, 2);
     sampler.Init();
 
     std::cout << "After reading input matrix:\n";

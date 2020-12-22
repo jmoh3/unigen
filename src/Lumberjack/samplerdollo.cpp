@@ -7,8 +7,7 @@ using std::vector;
 using std::map;
 
 SamplerDollo::SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen, 
-     size_t cell_clusters, size_t mutation_clusters,
-     double false_pos_rate=0.01, double false_neg_rate=0.5)
+     size_t cell_clusters, size_t mutation_clusters, double false_pos_rate, double false_neg_rate)
   : B_(B)
   , m_(B.getNrClones())
   , n_(B.getNrMutations())
@@ -56,6 +55,8 @@ void SamplerDollo::Init() {
   for (auto clause : adder_clauses) {
     approxmc_->add_clause(clause);
   }
+
+  approxmc_->get_solver()->dump_irred_clauses(&std::cout);
 }
 
 void SamplerDollo::InitializeVariableMatrices() {
@@ -195,7 +196,7 @@ void SamplerDollo::AddRowDuplicateClauses() {
   for (size_t row2 = 1; row2 < m_; row2++) {
     // row_is_duplicate[row] => 
     // row_is_duplicate_of[0][row] or ... row_is_duplicate_of[row-1][row]
-    vector<int> clause_only_if { row_is_duplicate_[row2] };
+    vector<int> clause_only_if { -row_is_duplicate_[row2] };
     for (size_t row1 = 0; row1 < row2; row1++) {
       // pair_in_col_equal[smaller][row][0] and ... pair_in_col_equal[smaller][row][n]
       // => row_is_duplicate_of[smaller][row]
@@ -228,16 +229,16 @@ void SamplerDollo::AddRowDuplicateClauses() {
 }
 
 void SamplerDollo::AddColDuplicateClauses() {
-  for (size_t col2 = 1; col2 < m_; col2++) {
+  for (size_t col2 = 1; col2 < n_; col2++) {
     // col_is_duplicate[col] =>
     // col_is_duplicate_of[0][col] or ... col_is_duplicate_of[col-1][col]
-    vector<int> clause_only_if { col_is_duplicate_[col2] };
+    vector<int> clause_only_if { -col_is_duplicate_[col2] };
     for (size_t col1 = 0; col1 < col2; col1++) {
       // pair_in_row_equal[0][smaller_col][col] and ... pair_in_row_equal[n][smaller_col][col]
       // => col_is_duplicate_of[smaller_col][col]
       vector<int> clause_if;
       
-      for (size_t row = 0; row < n_; row++) {
+      for (size_t row = 0; row < m_; row++) {
         clause_if.push_back(-pair_in_row_equal_[row][col1][col2]);
 
         // col_is_duplicate_of[smaller_col][col] => pair_in_row_equal[row][smaller_col][col]
@@ -321,6 +322,7 @@ void SamplerDollo::AddColPairsEqualClauses() {
 
 void SamplerDollo::UpdateSamplingSet() {
   // Update sampling set
+  std::cout << num_vars_ << " vars created total\n";
   SATSolver* solver = approxmc_->get_solver();
   solver->new_vars(num_vars_);
 
@@ -521,7 +523,7 @@ void SamplerDollo::AddClause(vector<int> clause) {
     Lit lit(label, is_inverted);
     lits.push_back(lit);
   }
-
+  // std::cout << "Adding clause " << lits << std::endl;
   approxmc_->add_clause(lits);
 }
 

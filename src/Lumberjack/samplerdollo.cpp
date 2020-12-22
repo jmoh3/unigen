@@ -158,9 +158,9 @@ Adder SamplerDollo::GetAdder()
       }
     }
   }
-  size_t max_fn = fn_rate_ * false_neg_flattened.size();
-  std::cout << "Max num false negatives: " << max_fn << std::endl;
-  adder.EncodeEqualToK(false_neg_flattened, max_fn);
+  num_fn_ = fn_rate_ * false_neg_flattened.size();
+  std::cout << "Max num false negatives: " << num_fn_ << std::endl;
+  adder.EncodeEqualToK(false_neg_flattened, num_fn_);
 
   // false positive constraints
   vector<int> false_pos_flattened;
@@ -174,9 +174,10 @@ Adder SamplerDollo::GetAdder()
       }
     }
   }
-  size_t max_fp = fp_rate_ * false_pos_flattened.size();
-  std::cout << "Max num false positives: " << max_fp << std::endl;
-  adder.EncodeEqualToK(false_pos_flattened, max_fp);
+
+  num_fp_ = fp_rate_ * false_pos_flattened.size();
+  std::cout << "Max num false positives: " << num_fp_ << std::endl;
+  adder.EncodeEqualToK(false_pos_flattened, num_fp_);
 
   // Row clustering constraints
   size_t num_row_duplicates = m_ - num_cell_clusters_;
@@ -391,34 +392,55 @@ void SamplerDollo::Sample(const ApproxMC::SolCount *sol_count, uint32_t num_samp
     vector<vector<int>> sol_matrix = GetSolMatrix(sol_map);
 
     ValidateSolution(sol_map, sol_matrix);
+    PrintClusteredMatrix(sol_map, sol_matrix);
+  }
+}
 
-    size_t num_fn = 0;
-    size_t num_fp = 0;
-
-    for (size_t i = 0; i < m_; i++)
+void SamplerDollo::PrintClusteredMatrix(map<int, bool> sol_map, vector<vector<int>> sol_matrix)
+{
+  for (size_t i = 0; i < m_; i++)
+  {
+    if (sol_map[row_is_duplicate_[i]])
     {
-      for (size_t j = 0; j < n_; j++)
-      {
-        std::cout << sol_matrix[i][j] << " ";
-
-        if (sol_matrix[i][j] == 1 && B_.getEntry(i, j) == 0)
-        {
-          num_fn++;
-        }
-        if ((sol_matrix[i][j] == 2 || sol_matrix[i][j] == 0) && B_.getEntry(i, j) == 1)
-        {
-          num_fp++;
-        }
-      }
-      std::cout << "\n";
+      continue;
     }
-
-    std::cout << "# false negatives: " << num_fn << "\n# false positives: " << num_fp << "\n";
+    for (size_t j = 0; j < n_; j++)
+    {
+      if (sol_map[col_is_duplicate_[j]])
+      {
+        continue;
+      }
+      std::cout << sol_matrix[i][j] << " ";
+    }
+    std::cout << "\n";
   }
 }
 
 void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> sol_matrix)
 {
+  // Verifies number of false negatives/positives
+
+  size_t actual_num_fn = 0;
+  size_t actual_num_fp = 0;
+
+  for (size_t i = 0; i < m_; i++)
+  {
+    for (size_t j = 0; j < n_; j++)
+    {
+      if (sol_matrix[i][j] == 1 && B_.getEntry(i, j) == 0)
+      {
+        actual_num_fn++;
+      }
+      if ((sol_matrix[i][j] == 2 || sol_matrix[i][j] == 0) && B_.getEntry(i, j) == 1)
+      {
+        actual_num_fp++;
+      }
+    }
+  }
+
+  assert(num_fn_ == actual_num_fn);
+  assert(num_fp_ == actual_num_fp);
+
   // Verifies values of pair in row equal/pair in column equal variables
   for (size_t i = 0; i < m_; i++)
   {
@@ -458,7 +480,9 @@ void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> 
     }
   }
 
-  // Verifies row is duplicate of and col is duplicate of variables
+  // Verifies row is duplicate of and col is duplicate of variables, num clusters
+
+  size_t num_row_duplicates = 0;
 
   for (size_t j = 1; j < m_; j++)
   {
@@ -484,10 +508,17 @@ void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> 
 
       assert(row_i_duplicate_of_j_expected == row_i_duplicate_of_j_actual);
     }
+
     bool row_j_is_duplicate_expected = sol_map[row_is_duplicate_[j]];
     assert(row_j_is_duplicate_actual == row_j_is_duplicate_expected);
-  }
 
+    if (row_j_is_duplicate_actual) {
+      num_row_duplicates++;
+    }
+  }
+  assert(num_cell_clusters_ == m_ - num_row_duplicates);
+
+  size_t num_col_duplicates = 0;
   for (size_t j = 1; j < n_; j++)
   {
     bool col_j_is_duplicate_actual = false;
@@ -516,7 +547,12 @@ void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> 
 
     bool col_j_is_duplicate_expected = sol_map[col_is_duplicate_[j]];
     assert(col_j_is_duplicate_actual == col_j_is_duplicate_expected);
+
+    if (col_j_is_duplicate_actual) {
+      num_col_duplicates++;
+    }
   }
+  assert(num_mutation_clusters_ == n_ - num_col_duplicates);
 }
 
 lbool SamplerDollo::GetAssignment(size_t var)

@@ -52,6 +52,10 @@ protected:
   /// Initializes variable matrices that define entries of corrected matrix
   void InitializeVariableMatrices();
 
+  /*
+    METHODS TO ADD CLAUSES TO INITIAL FORMULA
+  */
+
   /// Add clauses that prevent conflicting values to CNF formula
   void AddConflictingValuesClauses();
 
@@ -76,10 +80,14 @@ protected:
   /// Adds clauses that enforce the values of column duplicate variables
   void AddColDuplicateClauses();
 
-  /// Get current assignment of a variable from solver and input
-  /// @param var label for variable to get assignment for
-  /// @return true or false
-  lbool GetAssignment(size_t var);
+  /*
+    METHODS TO HELP WITH PARSING/PRINTING SAMPLED SOLUTIONS
+  */
+
+  /// Prints out a clustered matrix, omitting duplicate rows/columns
+  /// @param sol_map a mapping of variable labels to truth values
+  /// @param sol_matrix the resulting output matrix of a solution (unclustered)
+  void PrintClusteredMatrix(map<int, bool> sol_map, vector<vector<int>> sol_matrix);
 
   /// Gets a map representing truth assignments for a solution
   /// @param solution a vector of ints each entry is a variable, which is assigned 
@@ -87,11 +95,23 @@ protected:
   /// @return a map of variable label to truth assignment
   map<int, bool> GetSolutionMap(const vector<int>& solution);
 
-  /// Gets resulting solution matrix
+  /// Gets resulting solution matrix from a solution map
+  /// @param sol_map a mapping of variable labels to truth values
+  /// @return the resulting output matrix of a solution (unclustered)
   vector<vector<int>> GetSolMatrix(map<int, bool> sol_map);
 
-  /// Checks to make sure all clustering variables are all correctly set.
+  /// For given solution, asserts that:
+  /// * all clustering variables are all correctly set
+  /// * number of cell/mutation clusters is correct
+  /// * number of false positives/false negatives is correct
+  /// @param sol_map a mapping of variable labels to truth values
+  /// @param sol_matrix the resulting output matrix of a solution (unclustered)
   void ValidateSolution(map<int, bool> sol_map, vector<vector<int>> sol_matrix);
+
+  /// Get current assignment of a variable from solver and input
+  /// @param var label for variable to get assignment for
+  /// @return true or false
+  lbool GetAssignment(size_t var);
 
   /// Get current assignment of a variable from a solution map
   /// @param solution a map of variable label to truth assignment
@@ -99,6 +119,10 @@ protected:
   /// @param mutation
   /// @return 0, 1, or 2
   int GetAssignmentFromSolution(map<int, bool>& solution, size_t clone, size_t mutation);
+
+  /*
+    MISCELLANEOUS HELPER METHODS
+  */
 
   /// Helper method that gets an adder object for the current instance
   Adder GetAdder();
@@ -163,7 +187,12 @@ protected:
   /// False positive rate
   const double fp_rate_;
 
+  size_t num_fn_ = 0;
+  size_t num_fp_ = 0;
+
+  /// Number of cell clusters in clustered output matrix
   const size_t num_cell_clusters_;
+  /// Number of mutation clusters in clustered output matrix
   const size_t num_mutation_clusters_;
 
   /// loss_vars_ maps matrix entries to their loss variables

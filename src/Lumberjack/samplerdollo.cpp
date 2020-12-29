@@ -220,13 +220,11 @@ void SamplerDollo::AddRowDuplicateClauses()
 {
   for (size_t row2 = 1; row2 < m_; row2++)
   {
-    std::cout << "LARGER ROW: " << row2 << std::endl;
     // row_is_duplicate[row] =>
     // row_is_duplicate_of[0][row] or ... row_is_duplicate_of[row-1][row]
     vector<int> clause_only_if{-row_is_duplicate_[row2]};
     for (size_t row1 = 0; row1 < row2; row1++)
     {
-      std::cout << "SMALLER ROW: " << row1 << std::endl;
       // if all pairs in column are equal, then row is duplicate of prev row
       // pair_in_col_equal[0][smaller][row] and ... pair_in_col_equal[n][smaller][row]
       // => row_is_duplicate_of[smaller][row]
@@ -234,7 +232,6 @@ void SamplerDollo::AddRowDuplicateClauses()
 
       for (size_t col = 0; col < n_; col++)
       {
-        std::cout << "COL: " << col << std::endl;
         clause_if.push_back(-pair_in_col_equal_[col][row1][row2]);
 
         // row_is_duplicate_of[smaller][row] => pair_in_col_equal[col][smaller][row]
@@ -771,8 +768,6 @@ void SamplerDollo::AddClause(vector<int> clause)
     Lit lit(label, is_inverted);
     lits.push_back(lit);
   }
-
-  std::cout << "Adding clause " << lits << std::endl;
   approxmc_->add_clause(lits);
 }
 

@@ -473,7 +473,9 @@ int main(int argc, char** argv)
 
     void *myfile = &std::cout;
     std::ofstream sample_out;
+    std::string* out_filename = nullptr;
     if (vm.count("sampleout") != 0) {
+        out_filename = &sample_fname;
         sample_out.open(sample_fname.c_str());
         if (!sample_out.is_open()) {
             cout << "[Sampler] Cannot open samples file '" << sample_fname
@@ -485,7 +487,7 @@ int main(int argc, char** argv)
 
     unigen->set_callback(mycallback, myfile);
     // END HERE
-    sampler.Sample(&sol_count, num_samples);
+    sampler.Sample(&sol_count, num_samples, out_filename);
 
     delete unigen;
     delete appmc;

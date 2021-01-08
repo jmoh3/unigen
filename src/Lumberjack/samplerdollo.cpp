@@ -7,8 +7,25 @@ using std::map;
 using std::vector;
 
 SamplerDollo::SamplerDollo(const Matrix &B, size_t k, AppMC *appmc, UniG *unigen,
-                           size_t cell_clusters, size_t mutation_clusters, double false_pos_rate, double false_neg_rate)
-    : B_(B), m_(B.getNrClones()), n_(B.getNrMutations()), k_(k), num_vars_(1), loss_vars_(), false_pos_vars_(), false_neg_vars_(), num_constraints_(0), approxmc_(appmc), unigen_(unigen), fp_rate_(false_pos_rate), fn_rate_(false_neg_rate), num_cell_clusters_(cell_clusters), num_mutation_clusters_(mutation_clusters)
+                           size_t cell_clusters, size_t mutation_clusters,
+                           double false_pos_rate, double false_neg_rate,
+                           const unordered_set<size_t>* allowed_losses)
+    : B_(B),
+    m_(B.getNrClones()),
+    n_(B.getNrMutations()),
+    k_(k),
+    num_vars_(1),
+    loss_vars_(),
+    false_pos_vars_(),
+    false_neg_vars_(),
+    num_constraints_(0),
+    approxmc_(appmc),
+    unigen_(unigen),
+    fp_rate_(false_pos_rate),
+    fn_rate_(false_neg_rate),
+    num_cell_clusters_(cell_clusters),
+    num_mutation_clusters_(mutation_clusters),
+    allowed_losses_(allowed_losses)
 {
 }
 
@@ -43,9 +60,38 @@ void SamplerDollo::Init()
   std::cout << "Adding fp and fn constraint clauses\n";
   vector<vector<Lit>> adder_clauses = adder.GetClauses();
 
+  std::cout << "Adding unsupported losses clauses\n";
+  AddUnsupportedLossesClauses();
+
   for (auto clause : adder_clauses)
   {
     approxmc_->add_clause(clause);
+  }
+}
+
+void SamplerDollo::Sample(const ApproxMC::SolCount *sol_count, uint32_t num_samples, string* out_filename)
+{
+  vector<vector<int>> solutions = unigen_->sample(sol_count, num_samples);
+
+  if (out_filename != nullptr) {
+    std::ofstream out_file(*out_filename);
+    PrintSolutions(solutions, out_file);
+  } else {
+    PrintSolutions(solutions, std::cout);
+  }
+}
+
+void SamplerDollo::PrintSolutions(const vector<vector<int>>& solutions, std::ostream& os) const {
+  os << solutions.size() << " solutions sampled\n";
+
+  for (auto solution : solutions)
+  {
+    os << "===================\n";
+    map<int, bool> sol_map = GetSolutionMap(solution);
+    vector<vector<int>> sol_matrix = GetSolMatrix(sol_map);
+
+    ValidateSolution(sol_map, sol_matrix);
+    PrintClusteredMatrix(sol_map, sol_matrix, os);
   }
 }
 
@@ -361,6 +407,20 @@ void SamplerDollo::AddColPairsEqualClauses()
   }
 }
 
+void SamplerDollo::AddUnsupportedLossesClauses() {
+  if (allowed_losses_ != nullptr) {
+    for (size_t mutation_idx = 0; mutation_idx < n_; mutation_idx++) {
+      if (allowed_losses_->find(mutation_idx) != allowed_losses_->end()) {
+        for (size_t i = 0; i < m_; i++) {
+          int loss_var = loss_vars_[i][mutation_idx];
+          vector<int> forbid_loss_clause { -loss_var };
+          AddClause(forbid_loss_clause);
+        }
+      }
+    }
+  }
+}
+
 void SamplerDollo::UpdateSamplingSet()
 {
   // Update sampling set
@@ -376,44 +436,27 @@ void SamplerDollo::UpdateSamplingSet()
   approxmc_->set_sampling_set(sampling_set);
 }
 
-void SamplerDollo::Sample(const ApproxMC::SolCount *sol_count, uint32_t num_samples)
-{
-  vector<vector<int>> solutions = unigen_->sample(sol_count, num_samples);
-
-  std::cout << solutions.size() << " solutions sampled\n";
-
-  for (auto solution : solutions)
-  {
-    std::cout << "===================\n";
-    map<int, bool> sol_map = GetSolutionMap(solution);
-    vector<vector<int>> sol_matrix = GetSolMatrix(sol_map);
-
-    ValidateSolution(sol_map, sol_matrix);
-    PrintClusteredMatrix(sol_map, sol_matrix);
-  }
-}
-
-void SamplerDollo::PrintClusteredMatrix(map<int, bool> sol_map, vector<vector<int>> sol_matrix)
+void SamplerDollo::PrintClusteredMatrix(const map<int, bool>& sol_map, const vector<vector<int>>& sol_matrix, std::ostream& os) const
 {
   for (size_t i = 0; i < m_; i++)
   {
-    if (sol_map[row_is_duplicate_[i]])
+    if (sol_map.at(row_is_duplicate_[i]))
     {
       continue;
     }
     for (size_t j = 0; j < n_; j++)
     {
-      if (sol_map[col_is_duplicate_[j]])
+      if (sol_map.at(col_is_duplicate_[j]))
       {
         continue;
       }
-      std::cout << sol_matrix[i][j] << " ";
+      os << sol_matrix[i][j] << " ";
     }
-    std::cout << "\n";
+    os << "\n";
   }
 }
 
-void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> sol_matrix)
+void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> sol_matrix) const
 {
   // Verifies number of false negatives/positives
 
@@ -558,7 +601,7 @@ lbool SamplerDollo::GetAssignment(size_t var)
   return solver->get_model()[var];
 }
 
-vector<vector<int>> SamplerDollo::GetSolMatrix(map<int, bool> sol_map)
+vector<vector<int>> SamplerDollo::GetSolMatrix(const map<int, bool>& sol_map) const
 {
   vector<vector<int>> sol_matrix;
 
@@ -691,7 +734,7 @@ void SamplerDollo::PrintVariableMatrices()
   }
 }
 
-map<int, bool> SamplerDollo::GetSolutionMap(const vector<int> &solution)
+map<int, bool> SamplerDollo::GetSolutionMap(const vector<int> &solution) const
 {
   map<int, bool> sol_map;
   for (auto num : solution)
@@ -701,7 +744,7 @@ map<int, bool> SamplerDollo::GetSolutionMap(const vector<int> &solution)
   return sol_map;
 }
 
-int SamplerDollo::GetAssignmentFromSolution(map<int, bool> &solution, size_t clone, size_t mutation)
+int SamplerDollo::GetAssignmentFromSolution(const map<int, bool> &solution, size_t clone, size_t mutation) const
 {
   int loss_var = loss_vars_[clone][mutation];
   int false_neg_var = false_neg_vars_[clone][mutation];
@@ -709,13 +752,13 @@ int SamplerDollo::GetAssignmentFromSolution(map<int, bool> &solution, size_t clo
 
   int entry = B_.getEntry(clone, mutation);
 
-  if (solution[loss_var])
+  if (solution.at(loss_var))
   {
-    assert((entry == 0 && !solution[false_neg_var]) || (entry == 1 && solution[false_pos_var]));
+    assert((entry == 0 && !solution.at(false_neg_var)) || (entry == 1 && solution.at(false_pos_var)));
     return 2;
   }
 
-  if ((entry == 0 && !solution[false_neg_var]) || (entry == 1 && solution[false_pos_var]))
+  if ((entry == 0 && !solution.at(false_neg_var)) || (entry == 1 && solution.at(false_pos_var)))
   {
     return 0;
   }

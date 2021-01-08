@@ -15,12 +15,14 @@
 #include "adder.h"
 #include <map>
 #include <vector>
+#include <unordered_set>
 
 using namespace UniGen;
 using ApproxMC::AppMC;
 using ApproxMC::SolCount;
 using std::map;
 using std::vector;
+using std::unordered_set;
 
 /// This class provides a cutting plane wrapper for CryptoMiniSAT
 /// This can be used to solve the the k-DP problem .
@@ -37,7 +39,8 @@ public:
   /// @param false_neg_rate rate at which false negatives occur in SCS data
   SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen, 
      size_t cell_clusters, size_t mutation_clusters,
-     double false_pos_rate=0.01, double false_neg_rate=0.5);
+     double false_pos_rate=0.01, double false_neg_rate=0.5,
+     const unordered_set<size_t>* allowed_losses=nullptr);
   
   /// Initializes solver
   virtual void Init();
@@ -45,7 +48,8 @@ public:
   /// Samples solutions from current 1-Dollo instance
   /// @param sol_count
   /// @param num_samples desired number of samples
-  void Sample(const SolCount *sol_count, uint32_t num_samples);
+  /// @param out_filename where to direct output samples (pass in nullptr for std::out)
+  void Sample(const SolCount *sol_count, uint32_t num_samples, string* out_filename);
   
 protected:
 
@@ -80,25 +84,29 @@ protected:
   /// Adds clauses that enforce the values of column duplicate variables
   void AddColDuplicateClauses();
 
+  void AddUnsupportedLossesClauses();
+
   /*
     METHODS TO HELP WITH PARSING/PRINTING SAMPLED SOLUTIONS
   */
 
+  void PrintSolutions(const vector<vector<int>>& solutions, std::ostream& os) const;
+
   /// Prints out a clustered matrix, omitting duplicate rows/columns
   /// @param sol_map a mapping of variable labels to truth values
   /// @param sol_matrix the resulting output matrix of a solution (unclustered)
-  void PrintClusteredMatrix(map<int, bool> sol_map, vector<vector<int>> sol_matrix);
+  void PrintClusteredMatrix(const map<int, bool>& sol_map, const vector<vector<int>>& sol_matrix, std::ostream& os) const;
 
   /// Gets a map representing truth assignments for a solution
   /// @param solution a vector of ints each entry is a variable, which is assigned 
   /// true if positive and false o/w
   /// @return a map of variable label to truth assignment
-  map<int, bool> GetSolutionMap(const vector<int>& solution);
+  map<int, bool> GetSolutionMap(const vector<int>& solution) const;
 
   /// Gets resulting solution matrix from a solution map
   /// @param sol_map a mapping of variable labels to truth values
   /// @return the resulting output matrix of a solution (unclustered)
-  vector<vector<int>> GetSolMatrix(map<int, bool> sol_map);
+  vector<vector<int>> GetSolMatrix(const map<int, bool>& sol_map) const;
 
   /// For given solution, asserts that:
   /// * all clustering variables are all correctly set
@@ -106,7 +114,7 @@ protected:
   /// * number of false positives/false negatives is correct
   /// @param sol_map a mapping of variable labels to truth values
   /// @param sol_matrix the resulting output matrix of a solution (unclustered)
-  void ValidateSolution(map<int, bool> sol_map, vector<vector<int>> sol_matrix);
+  void ValidateSolution(map<int, bool> sol_map, vector<vector<int>> sol_matrix) const;
 
   /// Get current assignment of a variable from solver and input
   /// @param var label for variable to get assignment for
@@ -118,7 +126,7 @@ protected:
   /// @param clone
   /// @param mutation
   /// @return 0, 1, or 2
-  int GetAssignmentFromSolution(map<int, bool>& solution, size_t clone, size_t mutation);
+  int GetAssignmentFromSolution(const map<int, bool>& solution, size_t clone, size_t mutation) const;
 
   /*
     MISCELLANEOUS HELPER METHODS
@@ -189,6 +197,8 @@ protected:
 
   size_t num_fn_ = 0;
   size_t num_fp_ = 0;
+
+  const unordered_set<size_t>* allowed_losses_;
 
   /// Number of cell clusters in clustered output matrix
   const size_t num_cell_clusters_;

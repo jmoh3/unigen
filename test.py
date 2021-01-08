@@ -94,8 +94,8 @@ class TestDolloSAT(unittest.TestCase):
     def test_more_fp(self):
         print('=================== test_more_fp ===================')
         print('Expected # solutions: 30')
-        # false pos rate = 1 / # ones = 1 / 6
-        sample('test_inputs/ones_3x2.txt', 3, 2, 0, 0.167)
+        # false pos rate = 2 / # ones = 2 / 6
+        sample('test_inputs/ones_3x2.txt', 3, 2, 0, 0.334)
     
     # Input matrix is 4x4, clustered to 2x2 matrix, 2 false positives, 0 false negatives, all losses
     #

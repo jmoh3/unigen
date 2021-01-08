@@ -204,9 +204,11 @@ Adder SamplerDollo::GetAdder()
       }
     }
   }
-  num_fn_ = fn_rate_ * false_neg_flattened.size();
-  std::cout << "Max num false negatives: " << num_fn_ << std::endl;
-  adder.EncodeEqualToK(false_neg_flattened, num_fn_);
+  if (false_neg_flattened.size() > 0) {
+    num_fn_ = fn_rate_ * false_neg_flattened.size();
+    std::cout << "Max num false negatives: " << num_fn_ << std::endl;
+    adder.EncodeEqualToK(false_neg_flattened, num_fn_);
+  }
 
   // false positive constraints
   vector<int> false_pos_flattened;
@@ -220,10 +222,11 @@ Adder SamplerDollo::GetAdder()
       }
     }
   }
-
-  num_fp_ = fp_rate_ * false_pos_flattened.size();
-  std::cout << "Max num false positives: " << num_fp_ << std::endl;
-  adder.EncodeEqualToK(false_pos_flattened, num_fp_);
+  if (false_pos_flattened.size() > 0) {
+    num_fp_ = fp_rate_ * false_pos_flattened.size();
+    std::cout << "Max num false positives: " << num_fp_ << std::endl;
+    adder.EncodeEqualToK(false_pos_flattened, num_fp_);
+  }
 
   // Row clustering constraints
   size_t num_row_duplicates = m_ - num_cell_clusters_;

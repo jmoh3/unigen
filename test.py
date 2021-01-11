@@ -25,8 +25,8 @@ class TestDolloSAT(unittest.TestCase):
     def test_no_solutions_no_clustering(self):
         print('=================== test_no_solutions_no_clustering ===================')
         print('Expected # solutions: 0')
-        # false neg rate = 1 / # zeroes = 1 / 12 
-        sample('test_inputs/no_clustering.txt', 4, 4, 0.084, 0)
+        # false neg rate = 1 / # zeroes = 1 / 13
+        sample('test_inputs/no_clustering.txt', 4, 4, 0.075, 0)
     
     # No false positives or false negatives allowed.
     #
@@ -48,9 +48,9 @@ class TestDolloSAT(unittest.TestCase):
     # Total = 6 + 3 = 9 solutions
     def test_harder_one_fn(self):
         print('=================== test_harder_one_fn ===================')
-        print('Expected # solutions: 3')
+        print('Expected # solutions: 9')
         # false neg rate = 1 / # zeroes = 1 / 3
-        sample('test_inputs/test_harder.txt', 3, 3, 0.334, 0)
+        sample('test_inputs/test_harder.txt', 3, 3, 0.332, 0)
     
     # A matrix that clusters to a forbidden matrix, no false positives or
     # false negatives allowed, all mutation loss is allowed.
@@ -95,7 +95,7 @@ class TestDolloSAT(unittest.TestCase):
         print('=================== test_more_fp ===================')
         print('Expected # solutions: 30')
         # false pos rate = 2 / # ones = 2 / 6
-        sample('test_inputs/ones_3x2.txt', 3, 2, 0, 0.334)
+        sample('test_inputs/ones_3x2.txt', 3, 2, 0, 0.332)
     
     # Input matrix is 4x4, clustered to 2x2 matrix, 2 false positives, 0 false negatives, all losses
     #
@@ -106,7 +106,7 @@ class TestDolloSAT(unittest.TestCase):
         print('=================== test_small_cluster ===================')
         print('Expected # solutions: 2')
         # false pos rate = 1 / # ones = 1 / 11
-        sample('test_inputs/cluster_small.txt', 2, 2, 0, 0.091)
+        sample('test_inputs/cluster_small.txt', 2, 2, 0, 0.09)
 
 if __name__ == '__main__':
     unittest.main()

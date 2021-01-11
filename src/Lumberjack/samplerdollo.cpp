@@ -186,6 +186,8 @@ void SamplerDollo::InitializeVariableMatrices()
   {
     col_is_duplicate_[i] = GetNewVar();
   }
+
+  UpdateIndependentSet();
 }
 
 Adder SamplerDollo::GetAdder()
@@ -205,9 +207,9 @@ Adder SamplerDollo::GetAdder()
     }
   }
   if (false_neg_flattened.size() > 0) {
-    num_fn_ = fn_rate_ * false_neg_flattened.size();
+    num_fn_ = ceil(fn_rate_ * false_neg_flattened.size());
     std::cout << "Max num false negatives: " << num_fn_ << std::endl;
-    adder.EncodeEqualToK(false_neg_flattened, num_fn_);
+    adder.EncodeLeqToK(false_neg_flattened, num_fn_);
   }
 
   // false positive constraints
@@ -223,9 +225,9 @@ Adder SamplerDollo::GetAdder()
     }
   }
   if (false_pos_flattened.size() > 0) {
-    num_fp_ = fp_rate_ * false_pos_flattened.size();
+    num_fp_ = ceil(fp_rate_ * false_pos_flattened.size());
     std::cout << "Max num false positives: " << num_fp_ << std::endl;
-    adder.EncodeEqualToK(false_pos_flattened, num_fp_);
+    adder.EncodeLeqToK(false_pos_flattened, num_fp_);
   }
 
   // Row clustering constraints
@@ -424,6 +426,16 @@ void SamplerDollo::AddUnsupportedLossesClauses() {
   }
 }
 
+void SamplerDollo::UpdateIndependentSet()
+{
+  vector<uint32_t> indep_set;
+  for (int i = 0; i < num_vars_; ++i)
+  {
+    indep_set.push_back(i);
+  }
+  approxmc_->set_projection_set(indep_set);
+}
+
 void SamplerDollo::UpdateSamplingSet()
 {
   // Update sampling set
@@ -481,8 +493,8 @@ void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> 
     }
   }
 
-  assert(num_fn_ == actual_num_fn);
-  assert(num_fp_ == actual_num_fp);
+  assert(num_fn_ >= actual_num_fn);
+  assert(num_fp_ >= actual_num_fp);
 
   // Verifies values of pair in row equal/pair in column equal variables
   for (size_t i = 0; i < m_; i++)

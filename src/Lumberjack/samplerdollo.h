@@ -137,6 +137,8 @@ protected:
 
   /// Updates approxmc_'s sampling set with new variables
   void UpdateSamplingSet();
+
+  void UpdateIndependentSet();
   
   /// Helper method that prints out all the variable matrices for an instance
   void PrintVariableMatrices();

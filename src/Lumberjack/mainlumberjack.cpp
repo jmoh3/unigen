@@ -82,6 +82,7 @@ double false_negative_rate = 0.5;
 double false_positive_rate = 0.01;
 int32_t num_cell_clusters = -1;
 int32_t num_mutation_clusters = -1;
+string allowed_losses = "";
 
 //sampling
 uint32_t num_samples = 20;
@@ -140,6 +141,8 @@ void add_UniGen_options()
         , "Number of cell clusters in output matrix")
     ("num_mutation_clusters,m", po::value(&num_mutation_clusters)
         , "Number of mutation clusters in output matrix")
+    ("allowed_losses,l", po::value(&allowed_losses),
+        "Mutations that are allowed to be lost, zero indexed, comma separated (ex: 0,1,4)")
 
     ("epsilon", po::value(&epsilon)->default_value(epsilon, my_epsilon.str())
         , "epsilon parameter as per PAC guarantees")
@@ -442,12 +445,41 @@ int main(int argc, char** argv)
         num_cell_clusters = D.getNrMutations();
     }
 
-    SamplerDollo sampler(D, 2, appmc, unigen, num_cell_clusters, num_mutation_clusters, false_positive_rate, false_negative_rate);
+    unordered_set<size_t> allowed_losses_set;
+    unordered_set<size_t>* allowed_losses_ptr = nullptr;
+    if (allowed_losses != "") {
+        string delim = ",";
+        size_t prev = 0, pos = 0;
+        do
+        {
+            pos = allowed_losses.find(delim, prev);
+            if (pos == string::npos) {
+                pos = allowed_losses.length();
+            }
+            string token = allowed_losses.substr(prev, pos-prev);
+            if (!token.empty()) {
+                int loss = stoi(token);
+                allowed_losses_set.emplace(loss);
+            }
+            prev = pos + delim.length();
+        }
+        while (pos < allowed_losses.length() && prev < allowed_losses.length());
+        allowed_losses_ptr = &allowed_losses_set;
+    }
+
+    SamplerDollo sampler(D, 2, appmc, unigen, num_cell_clusters, num_mutation_clusters, false_positive_rate, false_negative_rate, allowed_losses_ptr);
     sampler.Init();
 
     std::cout << "After reading input matrix:\n";
 
     auto sol_count = appmc->count();
+
+    std::cout << "CELL SOL COUNT: " << sol_count.cellSolCount << std::endl;
+    std::cout << "SOL HASH COUNT: " << sol_count.hashCount << std::endl;
+
+    int32_t num_sols = sol_count.cellSolCount * pow(2, sol_count.hashCount);
+
+    cout << num_sols << " estimated solutions." << endl;
 
     std::cout << "Before set_verbosity:\n";
     unigen->set_verbosity(verbosity);

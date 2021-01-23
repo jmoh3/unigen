@@ -9,23 +9,25 @@ using std::vector;
 SamplerDollo::SamplerDollo(const Matrix &B, size_t k, AppMC *appmc, UniG *unigen,
                            size_t cell_clusters, size_t mutation_clusters,
                            double false_pos_rate, double false_neg_rate,
-                           const unordered_set<size_t>* allowed_losses)
+                           const unordered_set<size_t> *allowed_losses,
+                           bool use_cutting_plane)
     : B_(B),
-    m_(B.getNrClones()),
-    n_(B.getNrMutations()),
-    k_(k),
-    num_vars_(1),
-    loss_vars_(),
-    false_pos_vars_(),
-    false_neg_vars_(),
-    num_constraints_(0),
-    approxmc_(appmc),
-    unigen_(unigen),
-    fp_rate_(false_pos_rate),
-    fn_rate_(false_neg_rate),
-    num_cell_clusters_(cell_clusters),
-    num_mutation_clusters_(mutation_clusters),
-    allowed_losses_(allowed_losses)
+      m_(B.getNrClones()),
+      n_(B.getNrMutations()),
+      k_(k),
+      num_vars_(1),
+      loss_vars_(),
+      false_pos_vars_(),
+      false_neg_vars_(),
+      num_constraints_(0),
+      approxmc_(appmc),
+      unigen_(unigen),
+      fp_rate_(false_pos_rate),
+      fn_rate_(false_neg_rate),
+      num_cell_clusters_(cell_clusters),
+      num_mutation_clusters_(mutation_clusters),
+      allowed_losses_(allowed_losses),
+      use_cutting_plane_(use_cutting_plane)
 {
 }
 
@@ -33,9 +35,12 @@ void SamplerDollo::Init()
 {
   InitializeVariableMatrices();
   PrintVariableMatrices();
-  cutting_plane_ = new CuttingPlaneDollo(approxmc_->get_solver(), B_, loss_vars_, false_neg_vars_, false_pos_vars_, row_is_duplicate_, col_is_duplicate_);
-  unigen_->set_cutting_plane(cutting_plane_);
-  approxmc_->setCuttingPlane(cutting_plane_);
+
+  if (use_cutting_plane_) {
+    cutting_plane_ = new CuttingPlaneDollo(approxmc_->get_solver(), B_, loss_vars_, false_neg_vars_, false_pos_vars_, row_is_duplicate_, col_is_duplicate_);
+    unigen_->set_cutting_plane(cutting_plane_);
+    approxmc_->setCuttingPlane(cutting_plane_);
+  }
 
   Adder adder = GetAdder();
   num_vars_ += adder.GetNumVarsAdded();
@@ -45,6 +50,11 @@ void SamplerDollo::Init()
 
   vector<Lit> tmp{Lit(0, false)};
   approxmc_->add_clause(tmp);
+
+  if (!use_cutting_plane_) {
+    std::cout << "Adding cutting plane clauses\n";
+    AddCuttingPlaneClauses();
+  }
 
   std::cout << "Adding conflicting clauses\n";
   AddConflictingValuesClauses();
@@ -69,19 +79,23 @@ void SamplerDollo::Init()
   }
 }
 
-void SamplerDollo::Sample(const ApproxMC::SolCount *sol_count, uint32_t num_samples, string* out_filename)
+void SamplerDollo::Sample(const ApproxMC::SolCount *sol_count, uint32_t num_samples, string *out_filename)
 {
   vector<vector<int>> solutions = unigen_->sample(sol_count, num_samples);
 
-  if (out_filename != nullptr) {
+  if (out_filename != nullptr)
+  {
     std::ofstream out_file(*out_filename);
     PrintSolutions(solutions, out_file);
-  } else {
+  }
+  else
+  {
     PrintSolutions(solutions, std::cout);
   }
 }
 
-void SamplerDollo::PrintSolutions(const vector<vector<int>>& solutions, std::ostream& os) const {
+void SamplerDollo::PrintSolutions(const vector<vector<int>> &solutions, std::ostream &os) const
+{
   os << solutions.size() << " solutions sampled\n";
 
   for (auto solution : solutions)
@@ -206,7 +220,8 @@ Adder SamplerDollo::GetAdder()
       }
     }
   }
-  if (false_neg_flattened.size() > 0) {
+  if (false_neg_flattened.size() > 0)
+  {
     num_fn_ = ceil(fn_rate_ * false_neg_flattened.size());
     std::cout << "Max num false negatives: " << num_fn_ << std::endl;
     adder.EncodeLeqToK(false_neg_flattened, num_fn_);
@@ -224,7 +239,8 @@ Adder SamplerDollo::GetAdder()
       }
     }
   }
-  if (false_pos_flattened.size() > 0) {
+  if (false_pos_flattened.size() > 0)
+  {
     num_fp_ = ceil(fp_rate_ * false_pos_flattened.size());
     std::cout << "Max num false positives: " << num_fp_ << std::endl;
     adder.EncodeLeqToK(false_pos_flattened, num_fp_);
@@ -412,18 +428,117 @@ void SamplerDollo::AddColPairsEqualClauses()
   }
 }
 
-void SamplerDollo::AddUnsupportedLossesClauses() {
-  if (allowed_losses_ != nullptr) {
-    for (size_t mutation_idx = 0; mutation_idx < n_; mutation_idx++) {
-      if (allowed_losses_->find(mutation_idx) != allowed_losses_->end()) {
-        for (size_t i = 0; i < m_; i++) {
+void SamplerDollo::AddUnsupportedLossesClauses()
+{
+  if (allowed_losses_ != nullptr)
+  {
+    for (size_t mutation_idx = 0; mutation_idx < n_; mutation_idx++)
+    {
+      if (allowed_losses_->find(mutation_idx) != allowed_losses_->end())
+      {
+        for (size_t i = 0; i < m_; i++)
+        {
           int loss_var = loss_vars_[i][mutation_idx];
-          vector<int> forbid_loss_clause { -loss_var };
+          vector<int> forbid_loss_clause{-loss_var};
           AddClause(forbid_loss_clause);
         }
       }
     }
   }
+}
+
+void SamplerDollo::AddCuttingPlaneClauses()
+{
+  vector<vector<int>> forbidden_submatrices_flattened;
+  for (auto submatrix : forbidden_submatrices_)
+  {
+    forbidden_submatrices_flattened.push_back(GetForbiddenSubmatrixFromString(submatrix));
+  }
+
+  for (size_t row1 = 0; row1 < m_; row1++)
+  {
+    for (size_t row2 = 0; row2 < m_; row2++)
+    {
+      if (row1 == row2)
+      {
+        continue;
+      }
+      for (size_t row3 = 0; row3 < m_; row3++)
+      {
+        if (row3 == row2 || row3 == row1)
+        {
+          continue;
+        }
+        for (size_t col1 = 0; col1 < n_; col1++)
+        {
+          for (size_t col2 = 0; col2 < n_; col2++)
+          {
+            if (col1 == col2)
+            {
+              continue;
+            }
+
+            pair<size_t, size_t> b_11_pos(row1, col1);
+            pair<size_t, size_t> b_12_pos(row1, col2);
+
+            pair<size_t, size_t> b_21_pos(row2, col1);
+            pair<size_t, size_t> b_22_pos(row2, col2);
+
+            pair<size_t, size_t> b_31_pos(row3, col1);
+            pair<size_t, size_t> b_32_pos(row3, col2);
+
+            vector<pair<size_t, size_t>> positions{b_11_pos, b_12_pos, b_21_pos, b_22_pos, b_31_pos, b_32_pos};
+            vector<size_t> rows{row1, row2, row3};
+            vector<size_t> cols{col1, col2};
+
+            vector<int> is_one_vars = GetSubmatrixVars(positions, 1);
+            vector<int> is_two_vars = GetSubmatrixVars(positions, 2);
+
+            for (auto flattened_submatrix : forbidden_submatrices_flattened)
+            {
+              AddForbiddenSubmatrixClause(flattened_submatrix, is_one_vars, is_two_vars, rows, cols);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void SamplerDollo::AddForbiddenSubmatrixClause(const vector<int> &forbidden_submatrix, const vector<int> &is_one_vars, const vector<int> &is_two_vars,
+                                              const vector<size_t>& rows, const vector<size_t>& cols)
+{
+  vector<int> clause;
+  for (size_t i = 0; i < forbidden_submatrix.size(); i++)
+  {
+    int forbidden_entry = forbidden_submatrix[i];
+    if (forbidden_entry == 0)
+    {
+      // entry of dollo completion can either be 1 or 2
+      clause.push_back(is_one_vars[i]);
+      clause.push_back(is_two_vars[i]);
+    }
+    else if (forbidden_entry == 1)
+    {
+      // entry of dollo completion cannot be 1
+      clause.push_back(-is_one_vars[i]);
+    }
+    else
+    {
+      // entry of dollo completion cannot be 2
+      clause.push_back(-is_two_vars[i]);
+    }
+  }
+
+  // allow clause to be violated if any of the rows or columns are duplicates
+  for (auto row : rows) {
+    clause.push_back(row_is_duplicate_[row]);
+  }
+  for (auto col : cols) {
+    clause.push_back(col_is_duplicate_[col]);
+  }
+
+  AddClause(clause);
 }
 
 void SamplerDollo::UpdateIndependentSet()
@@ -451,7 +566,7 @@ void SamplerDollo::UpdateSamplingSet()
   approxmc_->set_sampling_set(sampling_set);
 }
 
-void SamplerDollo::PrintClusteredMatrix(const map<int, bool>& sol_map, const vector<vector<int>>& sol_matrix, std::ostream& os) const
+void SamplerDollo::PrintClusteredMatrix(const map<int, bool> &sol_map, const vector<vector<int>> &sol_matrix, std::ostream &os) const
 {
   for (size_t i = 0; i < m_; i++)
   {
@@ -471,7 +586,7 @@ void SamplerDollo::PrintClusteredMatrix(const map<int, bool>& sol_map, const vec
   }
 }
 
-void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> sol_matrix) const
+void SamplerDollo::ValidateSolution(const map<int, bool> &sol_map, const vector<vector<int>> &sol_matrix) const
 {
   // Verifies number of false negatives/positives
 
@@ -503,7 +618,7 @@ void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> 
     {
       for (size_t k = j + 1; k < n_; k++)
       {
-        bool pair_equal = sol_map[pair_in_row_equal_[i][j][k]];
+        bool pair_equal = sol_map.at(pair_in_row_equal_[i][j][k]);
         if (pair_equal)
         {
           assert(sol_matrix[i][j] == sol_matrix[i][k]);
@@ -522,7 +637,7 @@ void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> 
     {
       for (size_t k = j + 1; k < m_; k++)
       {
-        bool pair_equal = sol_map[pair_in_col_equal_[i][j][k]];
+        bool pair_equal = sol_map.at(pair_in_col_equal_[i][j][k]);
         if (pair_equal)
         {
           assert(sol_matrix[j][i] == sol_matrix[k][i]);
@@ -545,7 +660,7 @@ void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> 
 
     for (size_t i = 0; i < j; i++)
     {
-      bool row_i_duplicate_of_j_expected = sol_map[row_is_duplicate_of_[i][j]];
+      bool row_i_duplicate_of_j_expected = sol_map.at(row_is_duplicate_of_[i][j]);
 
       bool row_i_duplicate_of_j_actual = true;
       for (size_t k = 0; k < n_; k++)
@@ -564,10 +679,11 @@ void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> 
       assert(row_i_duplicate_of_j_expected == row_i_duplicate_of_j_actual);
     }
 
-    bool row_j_is_duplicate_expected = sol_map[row_is_duplicate_[j]];
+    bool row_j_is_duplicate_expected = sol_map.at(row_is_duplicate_[j]);
     assert(row_j_is_duplicate_actual == row_j_is_duplicate_expected);
 
-    if (row_j_is_duplicate_actual) {
+    if (row_j_is_duplicate_actual)
+    {
       num_row_duplicates++;
     }
   }
@@ -580,7 +696,7 @@ void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> 
 
     for (size_t i = 0; i < j; i++)
     {
-      bool col_i_duplicate_of_j_expected = sol_map[col_is_duplicate_of_[i][j]];
+      bool col_i_duplicate_of_j_expected = sol_map.at(col_is_duplicate_of_[i][j]);
 
       bool col_i_duplicate_of_j_actual = true;
       for (size_t k = 0; k < m_; k++)
@@ -600,10 +716,11 @@ void SamplerDollo::ValidateSolution(map<int, bool> sol_map, vector<vector<int>> 
       assert(col_i_duplicate_of_j_expected == col_i_duplicate_of_j_actual);
     }
 
-    bool col_j_is_duplicate_expected = sol_map[col_is_duplicate_[j]];
+    bool col_j_is_duplicate_expected = sol_map.at(col_is_duplicate_[j]);
     assert(col_j_is_duplicate_actual == col_j_is_duplicate_expected);
 
-    if (col_j_is_duplicate_actual) {
+    if (col_j_is_duplicate_actual)
+    {
       num_col_duplicates++;
     }
   }
@@ -616,7 +733,7 @@ lbool SamplerDollo::GetAssignment(size_t var)
   return solver->get_model()[var];
 }
 
-vector<vector<int>> SamplerDollo::GetSolMatrix(const map<int, bool>& sol_map) const
+vector<vector<int>> SamplerDollo::GetSolMatrix(const map<int, bool> &sol_map) const
 {
   vector<vector<int>> sol_matrix;
 
@@ -814,7 +931,7 @@ vector<int> SamplerDollo::GetEntryIsZeroVars(size_t row, size_t col) const
   return zero_vars;
 }
 
-void SamplerDollo::AddClause(vector<int> clause)
+void SamplerDollo::AddClause(const vector<int> &clause)
 {
   vector<Lit> lits;
 
@@ -829,7 +946,7 @@ void SamplerDollo::AddClause(vector<int> clause)
   approxmc_->add_clause(lits);
 }
 
-void SamplerDollo::AddClauses(vector<vector<int>> clauses)
+void SamplerDollo::AddClauses(const vector<vector<int>> &clauses)
 {
   for (auto clause : clauses)
   {
@@ -837,7 +954,7 @@ void SamplerDollo::AddClauses(vector<vector<int>> clauses)
   }
 }
 
-void SamplerDollo::AddImplyClause(vector<int> lhs, int rhs)
+void SamplerDollo::AddImplyClause(const vector<int> &lhs, int rhs)
 {
   vector<int> clause;
 
@@ -851,7 +968,7 @@ void SamplerDollo::AddImplyClause(vector<int> lhs, int rhs)
   AddClause(clause);
 }
 
-void SamplerDollo::AddImplyClauses(vector<int> lhs, vector<int> rhs)
+void SamplerDollo::AddImplyClauses(const vector<int> &lhs, const vector<int> &rhs)
 {
   for (auto var : rhs)
   {
@@ -874,7 +991,7 @@ void SamplerDollo::SetPairOfVarsEqual(int entry1, int entry2, int pair_equal_var
   AddImplyClause(lhs, entry1);
 }
 
-void SamplerDollo::SetPairOfVarsEqual(vector<int> entry1, vector<int> entry2, int pair_equal_var)
+void SamplerDollo::SetPairOfVarsEqual(const vector<int> &entry1, const vector<int> &entry2, int pair_equal_var)
 {
   // entry1 == 1 and entry2 == 1 => pair_equal
   vector<int> lhs;
@@ -891,4 +1008,49 @@ void SamplerDollo::SetPairOfVarsEqual(vector<int> entry1, vector<int> entry2, in
   lhs = vector<int>{pair_equal_var};
   lhs.insert(lhs.begin(), entry2.begin(), entry2.end());
   AddImplyClauses(lhs, entry1);
+}
+
+vector<int> SamplerDollo::GetForbiddenSubmatrixFromString(const std::string &submatrix_str)
+{
+  vector<int> flattened_submatrix;
+
+  string delim = " ";
+  size_t prev = 0, pos = 0;
+  do
+  {
+    pos = submatrix_str.find(delim, prev);
+    if (pos == string::npos)
+    {
+      pos = submatrix_str.length();
+    }
+    string token = submatrix_str.substr(prev, pos - prev);
+    if (!token.empty())
+    {
+      int entry = stoi(token);
+      flattened_submatrix.push_back(entry);
+    }
+    prev = pos + delim.length();
+  } while (pos < submatrix_str.length() && prev < submatrix_str.length());
+
+  return flattened_submatrix;
+}
+
+vector<int> SamplerDollo::GetSubmatrixVars(const vector<pair<size_t, size_t>> &submatrix_positions, int entry)
+{
+  vector<int> vars;
+  for (auto position : submatrix_positions)
+  {
+    size_t row = position.first;
+    size_t col = position.second;
+
+    if (entry == 1)
+    {
+      vars.push_back(GetEntryIsOneVar(row, col));
+    }
+    else if (entry == 2)
+    {
+      vars.push_back(loss_vars_[row][col]);
+    }
+  }
+  return vars;
 }

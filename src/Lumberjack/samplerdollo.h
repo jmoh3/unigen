@@ -40,7 +40,8 @@ public:
   SamplerDollo(const Matrix& B, size_t k, AppMC* appmc, UniG* unigen, 
      size_t cell_clusters, size_t mutation_clusters,
      double false_pos_rate=0.01, double false_neg_rate=0.5,
-     const unordered_set<size_t>* allowed_losses=nullptr);
+     const unordered_set<size_t>* allowed_losses=nullptr,
+     bool use_cutting_plane=true);
   
   /// Initializes solver
   virtual void Init();
@@ -84,7 +85,14 @@ protected:
   /// Adds clauses that enforce the values of column duplicate variables
   void AddColDuplicateClauses();
 
+  /// Adds clauses to forbid any unsupported losses
   void AddUnsupportedLossesClauses();
+
+  /// Adds clauses that enforce absence of forbidden submatrices
+  void AddCuttingPlaneClauses();
+
+  /// Adds one clause forbidding a given submatrix
+  void AddForbiddenSubmatrixClause(const vector<int>& forbidden_submatrix, const vector<int>& is_one_vars, const vector<int>& is_two_vars, const vector<size_t>& rows, const vector<size_t>& cols);
 
   /*
     METHODS TO HELP WITH PARSING/PRINTING SAMPLED SOLUTIONS
@@ -114,7 +122,7 @@ protected:
   /// * number of false positives/false negatives is correct
   /// @param sol_map a mapping of variable labels to truth values
   /// @param sol_matrix the resulting output matrix of a solution (unclustered)
-  void ValidateSolution(map<int, bool> sol_map, vector<vector<int>> sol_matrix) const;
+  void ValidateSolution(const map<int, bool>& sol_map, const vector<vector<int>>& sol_matrix) const;
 
   /// Get current assignment of a variable from solver and input
   /// @param var label for variable to get assignment for
@@ -157,29 +165,33 @@ protected:
 
   /// Adds clauses to current formula
   /// @param clauses clauses to add
-  void AddClauses(vector<vector<int>> clauses);
+  void AddClauses(const vector<vector<int>>& clauses);
 
   /// Adds clause to current formula
   /// @param clause clause to add
-  void AddClause(vector<int> clause);
+  void AddClause(const vector<int>& clause);
 
   /// Adds a clause to imply lhs => rhs in formula
   /// @param lhs the literals on the left hand side of implication
   /// @param rhs the literal on the right hand side of the implication
-  void AddImplyClause(vector<int> lhs, int rhs);
+  void AddImplyClause(const vector<int>& lhs, int rhs);
   
   /// Adds clauses to imply lhs => rhs in formula
   /// rhs.size() clauses will be added
   /// @param lhs the literals on the left hand side of implication
   /// @param rhs the literals on the right hand side of the implication
-  void AddImplyClauses(vector<int> lhs, vector<int> rhs);
+  void AddImplyClauses(const vector<int>& lhs, const vector<int>& rhs);
 
   /// Adds clauses to imply entry1 == entry2 => pair_equal_var
   void SetPairOfVarsEqual(int entry1, int entry2, int pair_equal_var);
 
   /// Adds clauses to imply entry1 == entry2 => pair_equal_var
   /// Overloaded function for when multiple variables correspond to one entry
-  void SetPairOfVarsEqual(vector<int> entry1, vector<int> entry2, int pair_equal_var);
+  void SetPairOfVarsEqual(const vector<int>& entry1, const vector<int>& entry2, int pair_equal_var);
+
+  vector<int> GetForbiddenSubmatrixFromString(const std::string& submatrix_str);
+
+  vector<int> GetSubmatrixVars(const vector<pair<size_t, size_t>> &submatrix_positions, int entry);
 
 protected:
 
@@ -233,6 +245,8 @@ protected:
   int num_vars_;
   /// Number of constraints
   int num_constraints_;
+
+  bool use_cutting_plane_;
   
   /// Approx MC solver
   AppMC* approxmc_;
@@ -240,6 +254,12 @@ protected:
   UniG* unigen_;
   /// Cutting plane oracle
   CuttingPlaneDollo* cutting_plane_;
+
+  const unordered_set<string> forbidden_submatrices_ {"100111", "100112", "100211", "100212", "100121",
+                                            "100122", "100221", "100222", "200111", "200112",
+                                            "200211", "200212", "200121", "200122", "200221",
+                                            "200222", "110212", "110222", "210212", "210222",
+                                            "201121", "201122", "201221", "201222", "211222"};
 };
 
 #endif // COLUMNGEN_H

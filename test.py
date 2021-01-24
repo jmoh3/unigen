@@ -2,6 +2,7 @@ import unittest
 import os, sys
 
 def sample(input_filename, m, n, fn, fp):
+    # add option --use_cuts 0 to test without cutting plane
     command = f'build/src-unigen/lumberjack {input_filename} -c {m} -m {n} -n {fn} -p {fp} | grep -Pzo \'.*solutions sampled(.*\\n)*\''
     os.system(command)
 

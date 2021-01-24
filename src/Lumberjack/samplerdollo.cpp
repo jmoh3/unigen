@@ -449,10 +449,11 @@ void SamplerDollo::AddUnsupportedLossesClauses()
 
 void SamplerDollo::AddCuttingPlaneClauses()
 {
-  vector<vector<int>> forbidden_submatrices_flattened;
+  vector<vector<int>> flattened_forbidden_submatrices;
   for (auto submatrix : forbidden_submatrices_)
   {
-    forbidden_submatrices_flattened.push_back(GetForbiddenSubmatrixFromString(submatrix));
+    vector<int> flattened_forbidden_submatrix = GetForbiddenSubmatrixFromString(submatrix);
+    flattened_forbidden_submatrices.push_back(flattened_forbidden_submatrix);
   }
 
   for (size_t row1 = 0; row1 < m_; row1++)
@@ -494,7 +495,7 @@ void SamplerDollo::AddCuttingPlaneClauses()
             vector<int> is_one_vars = GetSubmatrixVars(positions, 1);
             vector<int> is_two_vars = GetSubmatrixVars(positions, 2);
 
-            for (auto flattened_submatrix : forbidden_submatrices_flattened)
+            for (auto flattened_submatrix : flattened_forbidden_submatrices)
             {
               AddForbiddenSubmatrixClause(flattened_submatrix, is_one_vars, is_two_vars, rows, cols);
             }
@@ -514,18 +515,18 @@ void SamplerDollo::AddForbiddenSubmatrixClause(const vector<int> &forbidden_subm
     int forbidden_entry = forbidden_submatrix[i];
     if (forbidden_entry == 0)
     {
-      // entry of dollo completion can either be 1 or 2
+      // entry of dollo completion could either be 1 or 2 for this clause to be satisfied
       clause.push_back(is_one_vars[i]);
       clause.push_back(is_two_vars[i]);
     }
     else if (forbidden_entry == 1)
     {
-      // entry of dollo completion cannot be 1
+      // entry of dollo completion could be not 1 for this clause to be satisfied
       clause.push_back(-is_one_vars[i]);
     }
     else
     {
-      // entry of dollo completion cannot be 2
+      // entry of dollo completion could be not 2 for this clause to be satisfied
       clause.push_back(-is_two_vars[i]);
     }
   }
@@ -1014,23 +1015,10 @@ vector<int> SamplerDollo::GetForbiddenSubmatrixFromString(const std::string &sub
 {
   vector<int> flattened_submatrix;
 
-  string delim = " ";
-  size_t prev = 0, pos = 0;
-  do
-  {
-    pos = submatrix_str.find(delim, prev);
-    if (pos == string::npos)
-    {
-      pos = submatrix_str.length();
-    }
-    string token = submatrix_str.substr(prev, pos - prev);
-    if (!token.empty())
-    {
-      int entry = stoi(token);
-      flattened_submatrix.push_back(entry);
-    }
-    prev = pos + delim.length();
-  } while (pos < submatrix_str.length() && prev < submatrix_str.length());
+  for (size_t i = 0; i < submatrix_str.size(); i++) {
+    int entry = submatrix_str[i] - '0';
+    flattened_submatrix.push_back(entry);
+  }
 
   return flattened_submatrix;
 }

@@ -83,6 +83,7 @@ double false_positive_rate = 0.01;
 int32_t num_cell_clusters = -1;
 int32_t num_mutation_clusters = -1;
 string allowed_losses = "";
+int use_cutting_plane = 1;
 
 //sampling
 uint32_t num_samples = 20;
@@ -143,6 +144,9 @@ void add_UniGen_options()
         , "Number of mutation clusters in output matrix")
     ("allowed_losses,l", po::value(&allowed_losses),
         "Mutations that are allowed to be lost, zero indexed, comma separated (ex: 0,1,4)")
+    ("use_cuts", po::value(&use_cutting_plane)->default_value(use_cutting_plane),
+        "Use cutting plane (0 for no, 1 for yes)")
+    
 
     ("epsilon", po::value(&epsilon)->default_value(epsilon, my_epsilon.str())
         , "epsilon parameter as per PAC guarantees")
@@ -467,7 +471,9 @@ int main(int argc, char** argv)
         allowed_losses_ptr = &allowed_losses_set;
     }
 
-    SamplerDollo sampler(D, 2, appmc, unigen, num_cell_clusters, num_mutation_clusters, false_positive_rate, false_negative_rate, allowed_losses_ptr);
+    bool use_cuts = (use_cutting_plane == 1);
+
+    SamplerDollo sampler(D, 2, appmc, unigen, num_cell_clusters, num_mutation_clusters, false_positive_rate, false_negative_rate, allowed_losses_ptr, use_cuts);
     sampler.Init();
 
     std::cout << "After reading input matrix:\n";
